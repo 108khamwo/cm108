@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบสุ่มผู้สมัคร - เจียงใหม่ดีเบต เลือกตั้ง 69 (Optimized + Spacebar Support)</title>
+    <title>ระบบสุ่มผู้สมัคร - เจียงใหม่ดีเบต เลือกตั้ง 69 (Final Adjusted)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -21,7 +21,6 @@
             color: white;
             overflow: hidden;
             user-select: none;
-            /* Performance tweak: Text rendering optimization */
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -68,16 +67,14 @@
             -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
         }
 
-        /* --- Performance Optimizations --- */
         .hardware-accelerated {
             will-change: transform;
-            transform: translate3d(0, 0, 0); /* Force GPU */
+            transform: translate3d(0, 0, 0);
             backface-visibility: hidden;
             perspective: 1000px;
         }
         
         .carousel-container {
-            /* Strict containment optimizes layout calculations */
             contain: layout paint style; 
         }
     </style>
@@ -86,46 +83,34 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- IndexedDB Helper (คงเดิม) ---
         const DB_NAME = 'CM108_Debate_System';
         const DB_VERSION = 1;
         const STORE_NAME = 'app_data';
 
         const dbHelper = {
-            open: () => {
-                return new Promise((resolve, reject) => {
-                    const request = indexedDB.open(DB_NAME, DB_VERSION);
-                    request.onupgradeneeded = (event) => {
-                        const db = event.target.result;
-                        if (!db.objectStoreNames.contains(STORE_NAME)) {
-                            db.createObjectStore(STORE_NAME);
-                        }
-                    };
-                    request.onsuccess = (event) => resolve(event.target.result);
-                    request.onerror = (event) => reject(event.target.error);
-                });
-            },
+            open: () => new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+                };
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            }),
             save: async (key, data) => {
                 try {
                     const db = await dbHelper.open();
-                    return new Promise((resolve, reject) => {
-                        const tx = db.transaction(STORE_NAME, 'readwrite');
-                        const store = tx.objectStore(STORE_NAME);
-                        store.put(data, key);
-                        tx.oncomplete = () => resolve();
-                        tx.onerror = (event) => reject(event.target.error);
-                    });
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    tx.objectStore(STORE_NAME).put(data, key);
                 } catch (e) { console.error("DB Save Error", e); }
             },
             get: async (key) => {
                 try {
                     const db = await dbHelper.open();
-                    return new Promise((resolve, reject) => {
+                    return new Promise((resolve) => {
                         const tx = db.transaction(STORE_NAME, 'readonly');
-                        const store = tx.objectStore(STORE_NAME);
-                        const request = store.get(key);
+                        const request = tx.objectStore(STORE_NAME).get(key);
                         request.onsuccess = () => resolve(request.result);
-                        request.onerror = (event) => reject(event.target.error);
                     });
                 } catch (e) { return null; }
             }
@@ -137,8 +122,7 @@
             Image: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>,
             Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
             Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
-            Play: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
-            Save: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Play: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         };
 
         const formatCandidateName = (fullName) => {
@@ -177,7 +161,6 @@
 
         const CARD_WIDTH = 300; 
 
-        // Optimization: ใช้ React.memo กับ Card เพื่อลดการ Render ซ้ำซ้อน
         const CandidateCard = React.memo(({ c, index }) => {
             const { firstName, lastName } = formatCandidateName(c.name);
             return (
@@ -188,7 +171,6 @@
                                     style={{ borderColor: c.color }}>
                                 {c.img ? <img src={c.img} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center"><Icons.Image /></div>}
                             </div>
-                            
                             {c.partyLogo && (
                                 <div className="absolute -bottom-1 -right-1 w-16 h-16 bg-white rounded-full border-2 shadow-lg flex items-center justify-center z-20 p-1 overflow-hidden" 
                                         style={{ borderColor: c.color }}>
@@ -196,12 +178,10 @@
                                 </div>
                             )}
                         </div>
-
                         <div className="text-center drop-shadow-md w-full px-2 overflow-hidden">
                             <div className="text-3xl text-white font-medium leading-normal mb-0.15 truncate pt-2 pb-1">{firstName}</div>
                             <div className="text-2xl text-white font-medium truncate pt-1">{lastName || '-'}</div>
                         </div>
-                        
                         <div className="mt-2 px-5 py-1.5 rounded-full bg-black/40 border-2 w-fit max-w-[240px] shadow-lg" style={{ borderColor: c.color }}>
                             <p className="text-sm font-light text-white truncate">{c.party}</p>
                         </div>
@@ -229,7 +209,9 @@
             const speedRef = React.useRef(0);
             const animationRef = React.useRef(null);
             const stateRef = React.useRef('idle'); 
-            const frictionRef = React.useRef(0.985);
+            
+            // --- ADJUSTMENT 1: Slower Stop (Increased Friction) ---
+            const frictionRef = React.useRef(0.985); // ปรับจาก 0.980 เป็น 0.985 ให้ไถลนานขึ้น
 
             const [logoUrl, setLogoUrl] = React.useState(null);
             const [bgUrl, setBgUrl] = React.useState(null);
@@ -238,8 +220,8 @@
             const bgInputRef = React.useRef(null);
             const backupInputRef = React.useRef(null);
             
-            // Auto Hide Cursor
             const cursorTimeout = React.useRef(null);
+
             React.useEffect(() => {
                 const handleActivity = () => {
                     document.body.style.cursor = 'auto';
@@ -260,7 +242,6 @@
                 };
             }, []);
 
-            // Initial Load
             React.useEffect(() => {
                 const loadData = async () => {
                     try {
@@ -270,18 +251,13 @@
                         if (savedCandidates.length === 0) {
                              const localCand = localStorage.getItem('cm108_candidates');
                              if (localCand) setCandidates(JSON.parse(localCand));
-                             const localLogo = localStorage.getItem('cm108_logo');
-                             if (localLogo) setLogoUrl(localLogo);
                         } else {
                              setCandidates(savedCandidates);
                         }
                         if (savedLogo) setLogoUrl(savedLogo);
                         if (savedBg) setBgUrl(savedBg);
                         setDataLoaded(true);
-                    } catch (err) {
-                        console.error("DB Load Error", err);
-                        setDataLoaded(true);
-                    }
+                    } catch (err) { setDataLoaded(true); }
                 };
                 loadData();
             }, []);
@@ -297,17 +273,14 @@
                 if (view === 'finished') {
                     const timer = setTimeout(() => { setFinalAnim(true); }, 1000);
                     return () => clearTimeout(timer);
-                } else {
-                    setFinalAnim(false);
-                }
+                } else { setFinalAnim(false); }
             }, [view]);
 
             const handleLogoUpload = async (e) => {
                 if (e.target.files[0]) {
                     try {
                         const compressed = await compressImage(e.target.files[0], 400, 0.8, 'image/png', false); 
-                        setLogoUrl(compressed);
-                        dbHelper.save('logo', compressed);
+                        setLogoUrl(compressed); dbHelper.save('logo', compressed);
                     } catch (error) {}
                 }
             };
@@ -315,8 +288,7 @@
                 if (e.target.files[0]) {
                     try {
                         const compressed = await compressImage(e.target.files[0], 1024, 0.7, 'image/jpeg', true);
-                        setBgUrl(compressed);
-                        dbHelper.save('bg', compressed);
+                        setBgUrl(compressed); dbHelper.save('bg', compressed);
                     } catch (error) {}
                 }
             };
@@ -336,14 +308,10 @@
             const handleExport = () => {
                 const data = { candidates, logoUrl, bgUrl };
                 const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
-                const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = `cm108_backup_${new Date().toISOString().slice(0,10)}.json`;
-                document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
             };
 
             const handleImport = (e) => {
@@ -362,13 +330,11 @@
                 reader.readAsText(file);
             };
 
-            // Optimization: ลดจำนวน Loop ในการสร้าง Pool
-            const CLONE_MULTIPLIER = 16; // ลดจาก 60 เหลือ 16
+            const CLONE_MULTIPLIER = 16;
             
             const buildDisplayPool = (list) => {
                 if (list.length === 0) return [];
                 let expanded = [];
-                // สร้างเพียง 16 ชุด ก็เพียงพอให้ดูเหมือนวนไม่รู้จบ (ถ้า reset point แม่นยำ)
                 for(let i=0; i<CLONE_MULTIPLIER; i++) expanded.push(...list);
                 return expanded;
             };
@@ -378,11 +344,8 @@
                 const pool = buildDisplayPool(candidates);
                 setDisplayPool(pool);
                 setHistory([]);
-                
-                // Start near middle
                 const centerSetIndex = Math.floor(CLONE_MULTIPLIER / 2);
                 positionRef.current = centerSetIndex * candidates.length * CARD_WIDTH;
-                
                 stateRef.current = 'idle';
                 setWinner(null);
                 setView('ready');
@@ -393,16 +356,14 @@
                 
                 positionRef.current += speedRef.current;
                 
-                // Optimization: Dynamic Calculation
-                const oneSetCount = displayPool.length / CLONE_MULTIPLIER;
-                const setWidth = oneSetCount * CARD_WIDTH; 
+                const poolLength = displayPool.length;
+                if (poolLength === 0) return;
                 
-                // Optimization: Reset Logic ที่ปรับให้เข้ากับจำนวน Clone น้อยลง
-                // Reset เมื่อเลยไปท้ายๆ กลับมาที่ตรงกลางๆ
+                const setWidth = (poolLength / CLONE_MULTIPLIER) * CARD_WIDTH; 
+
                 if (positionRef.current >= setWidth * (CLONE_MULTIPLIER - 4)) {
                     positionRef.current -= setWidth * (CLONE_MULTIPLIER - 8); 
                 }
-                // Reset เมื่อถอยหลังมากไป
                 if (positionRef.current <= setWidth * 2) {
                     positionRef.current += setWidth * (CLONE_MULTIPLIER - 8);
                 }
@@ -410,23 +371,23 @@
                 const centerOffset = window.innerWidth / 2 - (CARD_WIDTH / 2);
                 const transformX = centerOffset - positionRef.current;
                 
-                // Optimization: ใช้ translate3d เพื่อ Force GPU
                 carouselRef.current.style.transform = `translate3d(${transformX}px, 0, 0)`;
 
                 if (stateRef.current === 'stopping') {
                     speedRef.current *= frictionRef.current; 
-                    if (speedRef.current < 0.5) { 
+                    if (speedRef.current < 0.8) { 
                         stateRef.current = 'snapping';
                     }
                 }
 
                 if (stateRef.current === 'snapping') {
                     const currentIndex = Math.round(positionRef.current / CARD_WIDTH);
-                    
                     let targetIndex = currentIndex;
                     let foundValid = false;
 
-                    for (let offset = 0; offset < displayPool.length / 2; offset++) {
+                    const searchRange = Math.min(20, displayPool.length / 2);
+
+                    for (let offset = 0; offset < searchRange; offset++) {
                         const checkIndices = [currentIndex + offset, currentIndex - offset];
                         for (let idx of checkIndices) {
                             const item = displayPool[idx];
@@ -442,10 +403,10 @@
                     const targetPos = targetIndex * CARD_WIDTH;
                     const diff = targetPos - positionRef.current;
                     
-                    positionRef.current += diff * 0.02; 
-                    speedRef.current *= 0.95;
+                    positionRef.current += diff * 0.05; 
+                    speedRef.current *= 0.90; 
 
-                    if (Math.abs(diff) < 0.5 && Math.abs(speedRef.current) < 0.05) {
+                    if (Math.abs(diff) < 0.2 && Math.abs(speedRef.current) < 0.1) {
                         positionRef.current = targetPos;
                         carouselRef.current.style.transform = `translate3d(${centerOffset - targetPos}px, 0, 0)`;
                         
@@ -455,16 +416,14 @@
                         if (winnerToSet) {
                             stateRef.current = 'decided';
                             setWinner(winnerToSet);
-                            setTimeout(() => {
-                                setView('winner');
-                            }, 500);
+                            // --- ADJUSTMENT 2: Faster Reveal ---
+                            setTimeout(() => setView('winner'), 50); // ปรับจาก 400ms เหลือ 50ms ให้โชว์ทันที
                         } else {
                              setView('finished');
                         }
                         return;
                     }
                 }
-                
                 animationRef.current = requestAnimationFrame(animateCarousel);
             };
 
@@ -480,7 +439,7 @@
                 
                 const accelerate = () => {
                     const accelRate = 2.5 + Math.random();
-                    if (stateRef.current === 'spinning' && speedRef.current < 70) { 
+                    if (stateRef.current === 'spinning' && speedRef.current < 60) { 
                         speedRef.current += accelRate; 
                         requestAnimationFrame(accelerate);
                     }
@@ -492,7 +451,8 @@
             const stopSpin = () => { 
                 if (stateRef.current !== 'spinning') return;
                 stateRef.current = 'stopping'; 
-                frictionRef.current = 0.988 + (Math.random() * 0.007);
+                // --- ADJUSTMENT 1: Reset Friction ---
+                frictionRef.current = 0.985; 
             };
 
             const resetRound = () => {
@@ -501,7 +461,6 @@
                     setTimeout(() => {
                         const newHistory = [...history, winner];
                         setHistory(newHistory);
-                        
                         const nextRemaining = candidates.filter(c => !newHistory.some(h => h.id === c.id));
                         
                         if (nextRemaining.length === 0) {
@@ -511,14 +470,11 @@
                             const currentIndex = Math.round(positionRef.current / CARD_WIDTH);
                             const listSizeBefore = remainingCandidates.length;
                             const listSizeAfter = nextRemaining.length;
-                            
-                            // ป้องกันการหารด้วยศูนย์ถ้า list ว่าง (แม้จะมี logic กันไว้แล้ว)
                             if (listSizeAfter > 0) {
                                 const cycleIndex = currentIndex % listSizeBefore;
                                 const newBaseIndex = Math.floor(currentIndex / listSizeBefore) * listSizeAfter;
                                 positionRef.current = (newBaseIndex + (cycleIndex % listSizeAfter)) * CARD_WIDTH;
                             }
-
                             setDisplayPool(newPool);
                             setWinner(null);
                             stateRef.current = 'idle';
@@ -532,24 +488,17 @@
             React.useEffect(() => {
                 const handleKeyDown = (e) => {
                     if (view === 'input') return;
-                    
-                    // --- MODIFIED SECTION: Support Enter OR Spacebar ---
                     if (e.key === 'Enter' || e.code === 'Space') {
-                        e.preventDefault(); // Prevent scrolling when pressing Space
-                        
-                        if (e.repeat) return; // Prevent holding down key
-
+                        e.preventDefault();
+                        if (e.repeat) return; 
                         if (view === 'ready' && stateRef.current === 'idle') {
                             startSpin();
                         } else if (view === 'spinning' && stateRef.current === 'spinning') {
                             stopSpin();
                         }
                     } else if (e.key === 'Escape') {
-                        if (view === 'winner') {
-                            resetRound();
-                        } else if (view === 'finished') {
-                            setView('input');
-                        }
+                        if (view === 'winner') resetRound();
+                        else if (view === 'finished') setView('input');
                     }
                 };
                 window.addEventListener('keydown', handleKeyDown);
@@ -560,12 +509,10 @@
                 <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" style={{contain: 'strict'}}>
                     {bgUrl ? (
                         <div className="absolute inset-0">
-                            <img src={bgUrl} alt="Bg" className="w-full h-full object-cover blur-sm opacity-60" />
+                            <img src={bgUrl} className="w-full h-full object-cover blur-sm opacity-60" />
                             <div className="absolute inset-0 bg-[#1e2542]/80 mix-blend-multiply"></div>
                         </div>
                     ) : <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#1e2542] to-[#312e81]"></div>}
-                    
-                    {/* Optimization: ลดขนาด Blur และใช้ Static Div แทนการขยับเยอะๆ หรือใช้ CSS Gradient */}
                     <div className="absolute -top-[10%] -left-[10%] w-[60vw] h-[60vw] bg-[#00c0fa]/20 blur-[80px] rounded-full mix-blend-screen opacity-60"></div>
                     <div className="absolute -top-[10%] -right-[10%] w-[60vw] h-[60vw] bg-[#a855f7]/20 blur-[80px] rounded-full mix-blend-screen opacity-60"></div>
                 </div>
@@ -576,8 +523,6 @@
                     CM108 x MCOT x สวท.เชียงใหม่
                 </div>
             );
-
-            // --- Views ---
 
             if (view === 'input') {
                 return (
@@ -709,13 +654,11 @@
             return (
                 <div className={`h-screen w-full relative flex flex-col items-center justify-center overflow-hidden ${isExiting ? 'animate-fadeInScene' : ''}`}>
                     <GameBackground /><TopRightLink />
-                    
                     <div className="absolute top-2 left-6 z-[60] pointer-events-none transition-all duration-700">
                          <div className="w-[100px] h-[100px] md:w-[140px] md:h-[140px] flex items-center justify-center">
                               <img src={logoUrl} className="max-w-full max-h-full object-contain drop-shadow-[0_0_20px_rgba(0,192,250,0.7)]" />
                          </div>
                     </div>
-
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
                          <div className="relative w-[300px] h-[400px] flex items-center justify-center">
                             <div className="absolute -top-16 left-0 right-0 flex justify-center">
@@ -726,7 +669,6 @@
                             <div className={`w-full h-full border-4 rounded-3xl transition-all duration-300 ${stateRef.current !== 'idle' ? 'border-[#00c0fa] shadow-[0_0_50px_rgba(0,192,250,0.5)] scale-105' : 'border-white/20'}`}></div>
                          </div>
                     </div>
-                    {/* Optimization: Add containment and will-change via CSS classes/styles */}
                     <div className="w-full h-[450px] flex items-center overflow-hidden relative z-10 carousel-mask mt-12 carousel-container">
                         <div ref={carouselRef} className="flex items-center absolute left-0 hardware-accelerated" style={{ height: '100%', transform: `translate3d(${window.innerWidth/2 - CARD_WIDTH/2 - positionRef.current}px, 0, 0)` }}>
                             {displayPool.length > 0 && displayPool.map((c, index) => (
