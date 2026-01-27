@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (Persistence V34 - Fixed Typography)</title>
+    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (Wheel + Line Break)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -17,7 +17,7 @@
     <style>
         body {
             font-family: 'Prompt', sans-serif;
-            background-color: #0f172a; 
+            background-color: #0f172a; /* Deep Navy */
             color: white;
             overflow: hidden;
             height: 100vh;
@@ -65,6 +65,7 @@
             z-index: 10;
         }
 
+        /* --- Ambient Background Animations --- */
         @keyframes float-1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(50px, -30px) scale(1.2); } }
         @keyframes float-2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-40px, 40px) scale(0.9); } }
         @keyframes float-3 { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(30px, 20px) rotate(15deg); } }
@@ -116,8 +117,11 @@
             const requestRef = React.useRef();
             const lastAngleRef = React.useRef(0);
             
+            // --- FIX: Initialize rotation so #1 is at Top (270deg) ---
             const [rotation, setRotation] = React.useState(() => {
                 const sliceAngle = 360 / items.length;
+                // Pointer is at 270 (Top). Center of Slice 0 is at sliceAngle/2.
+                // We want: InitialRotation + sliceAngle/2 = 270
                 return 270 - (sliceAngle / 2);
             });
 
@@ -133,14 +137,19 @@
             const outerRadius = radius + rimSize;
             const pinRadius = radius + (rimSize / 2); 
 
+            // --- COLOR LOGIC: 5 Shades of Blue/Purple ---
             const getFill = (i, total) => {
                 if (total === 5) {
                     const palettes = [
-                        'url(#grad-modern-blue)', 'url(#grad-modern-purple)', 
-                        'url(#grad-deep-blue)', 'url(#grad-deep-violet)', 'url(#grad-indigo-bridge)'
+                        'url(#grad-modern-blue)',   // 1. Bright Cyan/Blue
+                        'url(#grad-modern-purple)', // 2. Bright Pink/Purple
+                        'url(#grad-deep-blue)',     // 3. Deep Royal Blue
+                        'url(#grad-deep-violet)',   // 4. Deep Violet
+                        'url(#grad-indigo-bridge)'  // 5. Indigo
                     ];
                     return palettes[i % palettes.length];
                 }
+
                 if (total % 2 !== 0 && i === total - 1) return 'url(#grad-indigo-bridge)'; 
                 return i % 2 === 0 ? 'url(#grad-modern-blue)' : 'url(#grad-modern-purple)';
             };
@@ -160,9 +169,12 @@
                 if (currentSliceIndex !== prevSliceIndex) {
                     pointerRef.current.style.transform = 'translateX(-50%) rotate(-35deg)'; 
                     setTimeout(() => {
-                        if (pointerRef.current) pointerRef.current.style.transform = 'translateX(-50%) rotate(0deg)';
+                        if (pointerRef.current) {
+                            pointerRef.current.style.transform = 'translateX(-50%) rotate(0deg)';
+                        }
                     }, 80);
                 }
+
                 lastAngleRef.current = currentAngle;
                 requestRef.current = requestAnimationFrame(animateTicker);
             };
@@ -172,6 +184,7 @@
                 return () => cancelAnimationFrame(requestRef.current);
             }, [total]);
 
+            // --- SPIN LOGIC ---
             React.useEffect(() => {
                 if (spinStatus === 'idle') {
                     setSpeedPhase('idle');
@@ -187,18 +200,28 @@
                         setSpeedPhase('reset');
                         const currentVisualAngle = currentRotationRef.current;
                         setRotation(currentVisualAngle);
+
                         requestAnimationFrame(() => {
                             requestAnimationFrame(() => {
                                 setSpeedPhase('stopping');
+                                
                                 const randomFactor = (Math.random() * 0.7) - 0.35; 
                                 const jitterAngle = degPerSlice * randomFactor;
+
                                 const sliceTargetAngle = (targetIndex * degPerSlice) + (degPerSlice / 2) + jitterAngle;
+                                
                                 let targetRotationMod360 = (270 - sliceTargetAngle);
                                 targetRotationMod360 = (targetRotationMod360 + 360) % 360;
+                                
                                 const currentMod = currentVisualAngle % 360;
+                                
                                 let forwardDist = targetRotationMod360 - currentMod;
                                 if (forwardDist <= 0) forwardDist += 360;
-                                const finalRot = currentVisualAngle + (360 * 8) + forwardDist;
+                                
+                                const baseSpins = 360 * 8; 
+                                
+                                const finalRot = currentVisualAngle + baseSpins + forwardDist;
+                                
                                 setRotation(finalRot);
                             });
                         });
@@ -226,51 +249,134 @@
 
             return (
                 <div className="relative w-[85vmin] h-[85vmin] wheel-container">
-                    <div ref={wheelRef} className="w-full h-full wheel-shadow" style={{ transform: `rotate(${rotation}deg)`, transition: getTransition() }} onTransitionEnd={handleTransitionEnd} >
+                    
+                    <div 
+                        ref={wheelRef}
+                        className="w-full h-full wheel-shadow"
+                        style={{ 
+                            transform: `rotate(${rotation}deg)`,
+                            transition: getTransition()
+                        }}
+                        onTransitionEnd={handleTransitionEnd}
+                    >
                         <svg viewBox="0 0 650 650" className="w-full h-full">
                             <defs>
-                                <linearGradient id="grad-modern-blue" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#06b6d4" /><stop offset="100%" stopColor="#2563eb" /></linearGradient>
-                                <linearGradient id="grad-modern-purple" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#d946ef" /><stop offset="100%" stopColor="#7c3aed" /></linearGradient>
-                                <linearGradient id="grad-deep-blue" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#1e3a8a" /></linearGradient>
-                                <linearGradient id="grad-deep-violet" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#a78bfa" /><stop offset="100%" stopColor="#4c1d95" /></linearGradient>
-                                <linearGradient id="grad-indigo-bridge" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#818cf8" /><stop offset="100%" stopColor="#312e81" /></linearGradient>
-                                <linearGradient id="grad-rim-modern" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#60a5fa" /><stop offset="20%" stopColor="#3b82f6" /><stop offset="50%" stopColor="#a855f7" /> <stop offset="80%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#1d4ed8" /></linearGradient>
-                                <radialGradient id="grad-hub-modern" cx="50%" cy="50%" r="50%" fx="50%" fy="50%"><stop offset="0%" stopColor="#e0f2fe" /> <stop offset="40%" stopColor="#38bdf8" /> <stop offset="100%" stopColor="#0284c7" /> </radialGradient>
-                                <radialGradient id="grad-pin-3d" cx="35%" cy="35%" r="60%" fx="35%" fy="35%"><stop offset="0%" stopColor="#ffffff" /><stop offset="40%" stopColor="#e2e8f0" /> <stop offset="100%" stopColor="#475569" /> </radialGradient>
-                                <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="1" dy="2" stdDeviation="1.5" floodColor="#000" floodOpacity="0.5"/></filter>
+                                <linearGradient id="grad-modern-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#06b6d4" /> <stop offset="100%" stopColor="#2563eb" />
+                                </linearGradient>
+                                <linearGradient id="grad-modern-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#d946ef" /> <stop offset="100%" stopColor="#7c3aed" />
+                                </linearGradient>
+                                <linearGradient id="grad-deep-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#60a5fa" /> <stop offset="100%" stopColor="#1e3a8a" />
+                                </linearGradient>
+                                <linearGradient id="grad-deep-violet" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#a78bfa" /> <stop offset="100%" stopColor="#4c1d95" />
+                                </linearGradient>
+                                <linearGradient id="grad-indigo-bridge" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#818cf8" /> <stop offset="100%" stopColor="#312e81" />
+                                </linearGradient>
+                                <linearGradient id="grad-rim-modern" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stopColor="#60a5fa" />
+                                    <stop offset="20%" stopColor="#3b82f6" />
+                                    <stop offset="50%" stopColor="#a855f7" /> 
+                                    <stop offset="80%" stopColor="#3b82f6" />
+                                    <stop offset="100%" stopColor="#1d4ed8" />
+                                </linearGradient>
+                                <radialGradient id="grad-hub-modern" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                                    <stop offset="0%" stopColor="#e0f2fe" /> 
+                                    <stop offset="40%" stopColor="#38bdf8" /> 
+                                    <stop offset="100%" stopColor="#0284c7" /> 
+                                </radialGradient>
+                                <radialGradient id="grad-pin-3d" cx="35%" cy="35%" r="60%" fx="35%" fy="35%">
+                                    <stop offset="0%" stopColor="#ffffff" />
+                                    <stop offset="40%" stopColor="#e2e8f0" /> 
+                                    <stop offset="100%" stopColor="#475569" /> 
+                                </radialGradient>
+                                <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feDropShadow dx="1" dy="2" stdDeviation="1.5" floodColor="#000" floodOpacity="0.5"/>
+                                </filter>
                             </defs>
+
                             <g transform={`translate(${center + 25}, ${center + 25})`}>
                                 <circle cx="0" cy="0" r={outerRadius} fill="url(#grad-rim-modern)" stroke="#1e3a8a" strokeWidth="2" />
                                 <circle cx="0" cy="0" r={radius + 5} fill="#0f172a" stroke="#000" strokeOpacity="0.3" strokeWidth="4" />
+
                                 {items.map((item, i) => {
-                                    const startAngle = i * degPerSlice; const endAngle = (i + 1) * degPerSlice;
-                                    const startRad = (startAngle * Math.PI) / 180; const endRad = (endAngle * Math.PI) / 180;
-                                    const x1 = Math.cos(startRad) * radius; const y1 = Math.sin(startRad) * radius;
-                                    const x2 = Math.cos(endRad) * radius; const y2 = Math.sin(endRad) * radius;
+                                    const startAngle = i * degPerSlice;
+                                    const endAngle = (i + 1) * degPerSlice;
+                                    const startRad = (startAngle * Math.PI) / 180;
+                                    const endRad = (endAngle * Math.PI) / 180;
+                                    const x1 = Math.cos(startRad) * radius;
+                                    const y1 = Math.sin(startRad) * radius;
+                                    const x2 = Math.cos(endRad) * radius;
+                                    const y2 = Math.sin(endRad) * radius;
                                     const largeArc = degPerSlice > 180 ? 1 : 0;
                                     const pathData = `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-                                    const midAngle = startAngle + (degPerSlice / 2); const midRad = (midAngle * Math.PI) / 180;
-                                    const textR = radius * 0.65; const textX = Math.cos(midRad) * textR; const textY = Math.sin(midRad) * textR;
+                                    
+                                    const midAngle = startAngle + (degPerSlice / 2);
+                                    const midRad = (midAngle * Math.PI) / 180;
+                                    const textR = radius * 0.65;
+                                    const textX = Math.cos(midRad) * textR;
+                                    const textY = Math.sin(midRad) * textR;
+                                    
                                     const isWinner = highlightWinner === i;
+
                                     return (
                                         <g key={`slice-${i}`} className={isWinner ? 'winner-slice' : ''}>
-                                            <path d={pathData} fill={isWinner ? '#ffffff' : getFill(i, total)} stroke="rgba(255,255,255,0.2)" strokeWidth="2" fillOpacity={isWinner ? 1 : 0.85} />
-                                            <text x={textX} y={textY} fill={isWinner ? '#0f172a' : 'white'} fontSize={total > 20 ? "32" : "80"} fontWeight="900" fontFamily="'Prompt', sans-serif" textAnchor="middle" dominantBaseline="central" transform={`rotate(${midAngle}, ${textX}, ${textY}) rotate(90, ${textX}, ${textY})`} style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.6))', overflow: 'visible', pointerEvents: 'none' }} >{i + 1}</text>
+                                            <path 
+                                                d={pathData} 
+                                                fill={isWinner ? '#ffffff' : getFill(i, total)}
+                                                stroke="rgba(255,255,255,0.2)"
+                                                strokeWidth="2"
+                                                fillOpacity={isWinner ? 1 : 0.85}
+                                            />
+                                            <text 
+                                                x={textX} y={textY} 
+                                                fill={isWinner ? '#0f172a' : 'white'} 
+                                                fontSize={total > 20 ? "32" : "80"} 
+                                                fontWeight="900"
+                                                fontFamily="'Prompt', sans-serif"
+                                                textAnchor="middle" 
+                                                dominantBaseline="central"
+                                                transform={`rotate(${midAngle}, ${textX}, ${textY}) rotate(90, ${textX}, ${textY})`}
+                                                style={{ 
+                                                    filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.6))',
+                                                    overflow: 'visible',
+                                                    pointerEvents: 'none'
+                                                }}
+                                            >
+                                                {i + 1}
+                                            </text>
                                         </g>
                                     );
                                 })}
+
                                 {items.map((item, i) => {
-                                    const endAngle = (i + 1) * degPerSlice; const endRad = (endAngle * Math.PI) / 180;
-                                    const pinX = Math.cos(endRad) * pinRadius; const pinY = Math.sin(endRad) * pinRadius;
-                                    return ( <g key={`pin-${i}`} style={{ filter: 'url(#pin-shadow)' }}> <circle cx={pinX} cy={pinY} r="6" fill="url(#grad-pin-3d)" stroke="#334155" strokeWidth="0.5" /> <circle cx={pinX} cy={pinY} r="2.5" fill="none" stroke="#94a3b8" strokeWidth="0.5" opacity="0.5" /> </g> );
+                                    const endAngle = (i + 1) * degPerSlice;
+                                    const endRad = (endAngle * Math.PI) / 180;
+                                    const pinX = Math.cos(endRad) * pinRadius;
+                                    const pinY = Math.sin(endRad) * pinRadius;
+
+                                    return (
+                                        <g key={`pin-${i}`} style={{ filter: 'url(#pin-shadow)' }}>
+                                            <circle cx={pinX} cy={pinY} r="6" fill="url(#grad-pin-3d)" stroke="#334155" strokeWidth="0.5" />
+                                            <circle cx={pinX} cy={pinY} r="2.5" fill="none" stroke="#94a3b8" strokeWidth="0.5" opacity="0.5" />
+                                        </g>
+                                    );
                                 })}
+
                                 <circle cx="0" cy="0" r="50" fill="url(#grad-hub-modern)" stroke="#1e40af" strokeWidth="4" className="shadow-2xl"/>
                                 <circle cx="0" cy="0" r="35" fill="#1e293b" />
                                 <circle cx="0" cy="0" r="15" fill="#0ea5e9" />
                             </g>
                         </svg>
                     </div>
-                    <div ref={pointerRef} className="pointer-container absolute top-[-2%] left-1/2 -translate-x-1/2 z-50 w-[12vmin] h-[auto]" >
+
+                    <div 
+                        ref={pointerRef}
+                        className="pointer-container absolute top-[-2%] left-1/2 -translate-x-1/2 z-50 w-[12vmin] h-[auto]"
+                    >
                         <div className="relative filter drop-shadow-[0_0.8vmin_0.4vmin_rgba(0,0,0,0.4)]">
                             <svg width="100%" height="100%" viewBox="0 0 100 130" fill="none">
                                 <path d="M50 120 C 50 120 20 65 20 45 A 30 30 0 1 1 80 45 C 80 65 50 120 50 120 Z" fill="#ef4444" stroke="white" strokeWidth="6" strokeLinejoin="round"/>
@@ -286,7 +392,11 @@
             const [gameState, setGameState] = React.useState('input'); 
             const [questions, setQuestions] = React.useState([]);
             const [inputText, setInputText] = React.useState(() => {
-                try { return localStorage.getItem('debate_questions_v5') || `นโยบายเร่งด่วน 100 วันแรก?`; } catch(e) { return ""; }
+                try { return localStorage.getItem('debate_questions_v5') || `นโยบายเร่งด่วน 100 วันแรก?
+แนวทางแก้ปัญหาเศรษฐกิจ?
+จุดยืนเรื่องความเท่าเทียม?
+การจัดการปัญหาฝุ่น PM 2.5?
+วิสัยทัศน์การศึกษาไทย?`; } catch(e) { return ""; }
             });
 
             const [activeCardIndex, setActiveCardIndex] = React.useState(null); 
@@ -299,8 +409,12 @@
             const inputBufferRef = React.useRef('');
             const inputTimeoutRef = React.useRef(null);
 
-            const [logoUrl, setLogoUrl] = React.useState(() => { try { return localStorage.getItem('debate_logo') || 'logo_debate.png'; } catch (e) { return 'logo_debate.png'; } });
-            const [bgUrl, setBgUrl] = React.useState(() => { try { return localStorage.getItem('debate_bg') || null; } catch (e) { return null; } });
+            const [logoUrl, setLogoUrl] = React.useState(() => {
+                try { return localStorage.getItem('debate_logo') || 'logo_debate.png'; } catch (e) { return 'logo_debate.png'; }
+            });
+            const [bgUrl, setBgUrl] = React.useState(() => {
+                try { return localStorage.getItem('debate_bg') || null; } catch (e) { return null; }
+            });
             
             const fileInputRef = React.useRef(null);
             const bgInputRef = React.useRef(null);
@@ -324,7 +438,10 @@
                         if (activeCardIndex !== null) closeCard();
                         return;
                     }
-                    if (activeCardIndex !== null) { if (e.key === 'Enter' || e.code === 'Space') closeCard(); return; }
+                    if (activeCardIndex !== null) {
+                        if (e.key === 'Enter' || e.code === 'Space') closeCard();
+                        return;
+                    }
                     if (/^\d$/.test(e.key)) {
                         if (inputTimeoutRef.current) clearTimeout(inputTimeoutRef.current);
                         inputBufferRef.current += e.key;
@@ -336,7 +453,10 @@
                             const num = parseInt(inputBufferRef.current, 10);
                             const index = num - 1; 
                             inputBufferRef.current = '';
-                            if (index >= 0 && index < questions.length) { setSpinStatus('idle'); openCard(index); }
+                            if (inputTimeoutRef.current) clearTimeout(inputTimeoutRef.current);
+                            if (index >= 0 && index < questions.length) {
+                                setSpinStatus('idle'); openCard(index);
+                            }
                             return; 
                         }
                     }
@@ -354,7 +474,9 @@
             const handleStart = () => {
                 const qList = inputText.split('\n').map(q => q.trim()).filter(q => q.length > 0);
                 if (qList.length === 0) { alert('กรุณาใส่คำถามอย่างน้อย 1 ข้อ'); return; }
-                setQuestions(qList); setGameState('playing'); setSpinStatus('idle');
+                setQuestions(qList);
+                setGameState('playing');
+                setSpinStatus('idle');
             };
 
             const startSpin = () => { setSpinStatus('spinning'); setTargetIndex(null); };
@@ -368,7 +490,8 @@
                     if (angle < 0) angle += 360;
                     currentRotationRef.current = angle;
                 }
-                setTargetIndex(Math.floor(Math.random() * questions.length));
+                const winner = Math.floor(Math.random() * questions.length);
+                setTargetIndex(winner);
                 setSpinStatus('stopping');
             };
 
@@ -393,14 +516,22 @@
             const handleLogoUpload = async (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    try { const b64 = await compressImage(file, 400); setLogoUrl(b64); localStorage.setItem('debate_logo', b64); } catch (e) { alert("Error"); }
+                    try {
+                        const compressedBase64 = await compressImage(file, 400); 
+                        setLogoUrl(compressedBase64);
+                        localStorage.setItem('debate_logo', compressedBase64);
+                    } catch (error) { alert("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"); }
                 }
             };
 
             const handleBgUpload = async (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    try { const b64 = await compressImage(file, 1280); setBgUrl(b64); localStorage.setItem('debate_bg', b64); } catch (e) { alert("Error"); }
+                    try {
+                        const compressedBase64 = await compressImage(file, 1280);
+                        setBgUrl(compressedBase64);
+                        localStorage.setItem('debate_bg', compressedBase64);
+                    } catch (error) { alert("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"); }
                 }
             };
 
@@ -413,7 +544,8 @@
             };
 
             const handleImport = (event) => {
-                const file = event.target.files[0]; if (!file) return;
+                const file = event.target.files[0];
+                if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
@@ -421,28 +553,23 @@
                         if (data.questions) setInputText(data.questions);
                         if (data.logo) setLogoUrl(data.logo);
                         if (data.bg) setBgUrl(data.bg);
-                        alert('Restore Complete'); window.location.reload(); 
-                    } catch (err) { alert('Error'); }
+                        alert('กู้คืนข้อมูลสำเร็จ (Restore Complete)');
+                        window.location.reload(); 
+                    } catch (err) { alert('ไฟล์ไม่ถูกต้อง'); }
                 };
                 reader.readAsText(file);
+                event.target.value = '';
             };
 
-            // --- FIX: เพิ่มช่องว่างวรรณยุกต์และกันขอบตัด ---
             const getQuestionStyle = (text) => {
                 const length = text ? text.length : 0;
                 let fontSize;
-                if (length < 20) fontSize = 'clamp(3.5rem, 8vw, 6.5rem)'; 
-                else if (length < 60) fontSize = 'clamp(2.5rem, 6vw, 5rem)';
+                if (length < 20) fontSize = 'clamp(5rem, 15vw, 14rem)'; 
+                else if (length < 60) fontSize = 'clamp(3rem, 10vw, 8rem)';
+                else if (length < 120) fontSize = 'clamp(2rem, 6vw, 5rem)';
                 else fontSize = 'clamp(1.8rem, 4vw, 3.5rem)';
-                return { 
-                    fontSize, 
-                    lineHeight: '1.8', // เพิ่มพื้นที่แนวตั้งกันวรรณยุกต์ขาด
-                    wordBreak: 'break-word', 
-                    overflowWrap: 'break-word', 
-                    width: '100%', 
-                    padding: '10px 40px', 
-                    textAlign: 'center' 
-                };
+                // Updated lineHeight to 1.5 to support better multi-line Thai text
+                return { fontSize, lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word', width: '100%', padding: '0 20px', textAlign: 'center' };
             };
 
             return (
@@ -473,7 +600,9 @@
                                     <button onClick={() => bgInputRef.current.click()} className="p-2 text-[#0ea5e9]/50 hover:text-[#0ea5e9] hover:bg-[#0ea5e9]/10 rounded-lg transition-colors"><Icons.Image /> <input type="file" ref={bgInputRef} onChange={handleBgUpload} className="hidden" accept="image/*" /></button>
                                 </>
                             )}
-                            {gameState === 'playing' && ( <button onClick={resetGame} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#0ea5e9] hover:text-white transition-colors rounded-lg hover:bg-[#0ea5e9]/10">CM108 x MCOT x สวท.เชียงใหม่</button> )}
+                            {gameState === 'playing' && (
+                                <button onClick={resetGame} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#0ea5e9] hover:text-white transition-colors rounded-lg hover:bg-[#0ea5e9]/10">CM108 x MCOT x สวท.เชียงใหม่</button>
+                            )}
                         </div>
                     </header>
 
@@ -482,7 +611,12 @@
                             <div className="w-full max-w-4xl flex flex-col justify-center page-enter page-enter-active">
                                 <div className="bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/10 flex flex-col h-[70vh]">
                                     <h2 className="text-2xl font-bold mb-4 text-[#0ea5e9]">รายการคำถาม</h2>
-                                    <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} className="flex-1 w-full bg-slate-900/50 rounded-xl p-4 text-lg text-white border border-white/10 focus:border-[#0ea5e9] focus:ring-1 focus:ring-[#0ea5e9] focus:outline-none resize-none mb-6 leading-relaxed" placeholder="พิมพ์คำถามที่นี่..."></textarea>
+                                    <textarea 
+                                        value={inputText} 
+                                        onChange={(e) => setInputText(e.target.value)} 
+                                        className="flex-1 w-full bg-slate-900/50 rounded-xl p-4 text-lg text-white border border-white/10 focus:border-[#0ea5e9] focus:ring-1 focus:ring-[#0ea5e9] focus:outline-none resize-none mb-6 leading-relaxed" 
+                                        placeholder="พิมพ์คำถามที่นี่... (ใช้เครื่องหมาย | เพื่อขึ้นบรรทัดใหม่ในคำถาม)"
+                                    ></textarea>
                                     <button onClick={handleStart} className="w-full py-4 bg-gradient-to-r from-[#0ea5e9] to-blue-600 rounded-xl text-xl font-bold text-white shadow-lg hover:shadow-[#0ea5e9]/40 hover:scale-[1.01] transition-all active:scale-95">เริ่มระบบสุ่ม (Start Wheel)</button>
                                 </div>
                             </div>
@@ -491,14 +625,20 @@
                         {gameState === 'playing' && (
                             <>
                                 <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ${activeCardIndex !== null ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
-                                    <Wheel items={questions} spinStatus={spinStatus} setSpinStatus={setSpinStatus} targetIndex={targetIndex} onSpinFinish={onSpinFinish} currentRotationRef={currentRotationRef} />
+                                    <Wheel 
+                                        items={questions} 
+                                        spinStatus={spinStatus}
+                                        setSpinStatus={setSpinStatus}
+                                        targetIndex={targetIndex}
+                                        onSpinFinish={onSpinFinish}
+                                        currentRotationRef={currentRotationRef}
+                                    />
                                 </div>
 
                                 {activeCardIndex !== null && (
                                     <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-300 ${isModalClosing ? 'opacity-0' : 'opacity-100 animate-in fade-in duration-300'}`} onClick={closeCard}>
                                         <div className={`absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity duration-300 ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}></div>
-                                        {/* FIX: ลบ overflow-hidden และเพิ่ม py-10 */}
-                                        <div className={`relative w-[98vw] max-w-7xl max-h-[90vh] bg-[#1e2542] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl shadow-[#0ea5e9]/20 flex flex-col py-10 transition-all duration-300 ${isModalClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100 animate-in zoom-in-95 duration-300'}`} onClick={(e) => e.stopPropagation()}>
+                                        <div className={`relative w-[98vw] max-w-7xl max-h-[90vh] bg-[#1e2542] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl shadow-[#0ea5e9]/20 flex flex-col overflow-hidden transition-all duration-300 ${isModalClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100 animate-in zoom-in-95 duration-300'}`} onClick={(e) => e.stopPropagation()}>
                                             <div className="w-full flex justify-between items-center shrink-0 mb-8">
                                                 <div className="flex flex-col items-start gap-4">
                                                     <div className="text-white text-2xl md:text-4xl font-medium flex items-center gap-3">
@@ -514,8 +654,15 @@
                                                 </div>
                                                 <div className="flex flex-col items-end"><img src={logoUrl} alt="Logo" className="h-16 md:h-24 object-contain opacity-100 drop-shadow-xl" /></div>
                                             </div>
-                                            <div className="flex-1 w-full flex items-center justify-center px-4">
-                                                <h3 className="font-bold text-center text-white drop-shadow-2xl w-full" style={getQuestionStyle(questions[activeCardIndex])}>{questions[activeCardIndex]}</h3>
+                                            <div className="flex-1 w-full flex items-center justify-center overflow-hidden px-4">
+                                                <h3 className="font-bold text-center text-white drop-shadow-2xl w-full" style={getQuestionStyle(questions[activeCardIndex])}>
+                                                    {questions[activeCardIndex].split('|').map((line, idx) => (
+                                                        <React.Fragment key={idx}>
+                                                            {line}
+                                                            {idx < questions[activeCardIndex].split('|').length - 1 && <br />}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </h3>
                                             </div>
                                         </div>
                                     </div>
