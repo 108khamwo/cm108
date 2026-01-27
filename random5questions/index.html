@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (No Mouse Interaction)</title>
+    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (Support Line Break)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -532,7 +532,7 @@
                                         value={inputText}
                                         onChange={(e) => setInputText(e.target.value)}
                                         className="flex-1 w-full bg-slate-900/50 rounded-xl p-4 text-lg text-white border border-white/10 focus:border-[#00c0fa] focus:ring-1 focus:ring-[#00c0fa] focus:outline-none resize-none mb-6 leading-relaxed"
-                                        placeholder="พิมพ์คำถามที่นี่..."
+                                        placeholder="พิมพ์คำถามที่นี่... (ใช้เครื่องหมาย | เพื่อขึ้นบรรทัดใหม่ในคำถาม)"
                                     ></textarea>
                                     <button 
                                         onClick={handleStart}
@@ -599,7 +599,12 @@
                                             className="font-bold text-center text-white drop-shadow-2xl w-full"
                                             style={getQuestionStyle(questions[activeCardIndex])}
                                         >
-                                            {questions[activeCardIndex]}
+                                            {questions[activeCardIndex].split('|').map((line, idx) => (
+                                                <React.Fragment key={idx}>
+                                                    {line}
+                                                    {idx < questions[activeCardIndex].split('|').length - 1 && <br />}
+                                                </React.Fragment>
+                                            ))}
                                         </h3>
                                     </div>
                                     
