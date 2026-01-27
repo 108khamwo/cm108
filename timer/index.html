@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบนับถอยหลัง CM108 x MCOT x สวท.เชียงใหม่</title>
+    
+    <!-- Google Fonts: Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Config for Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif']
+                    },
+                    colors: {
+                        brand: {
+                            400: '#60a5fa', 
+                            600: '#2563eb',
+                            800: '#1e40af',
+                            900: '#0f172a',
+                            purple: '#7e22ce'
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'blink-severe': 'blink 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate'
+                    },
+                    keyframes: {
+                        blink: {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.3' }, 
+                        },
+                        glow: {
+                            '0%': { filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.4)) brightness(1)' },
+                            '100%': { filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.8)) brightness(1.2)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Styles */
+        .no-cursor {
+            cursor: none;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .transition-bg {
+            transition: background-color 0.5s ease, transform 0.3s ease;
+        }
+
+        /* Input Range Customization */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -8px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+        }
+
+        /* File Input Hidden */
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-screen overflow-hidden selection:bg-blue-500 selection:text-white select-none">
+
+    <!-- ========================================== -->
+    <!-- CONTROLLER VIEW (Main Screen)              -->
+    <!-- ========================================== -->
+    <div id="controller-view" class="hidden h-full flex flex-col relative z-10">
+        
+        <!-- Navbar -->
+        <nav class="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-slate-900/80 backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <!-- Dynamic Navbar Logo -->
+                <div class="relative w-10 h-10 flex items-center justify-center">
+                    <img id="navbar-logo-img" src="" class="absolute inset-0 w-full h-full object-contain hidden" alt="Brand Logo">
+                    <div id="navbar-logo-placeholder" class="w-10 h-10 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-lg flex items-center justify-center font-bold shadow-lg shadow-blue-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="font-semibold text-xl tracking-wide text-blue-200 text-shadow-sm truncate">
+                    ระบบนับถอยหลัง CM108 x MCOT x สวท.เชียงใหม่
+                </h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-xs text-slate-400 hidden lg:block">
+                    <span class="px-2 py-1 bg-slate-800 rounded border border-slate-700">Space / Enter : เริ่ม/หยุด</span>
+                    <span class="px-2 py-1 bg-slate-800 rounded border border-slate-700">Esc : รีเซ็ต</span>
+                </div>
+                <button onclick="openDisplayWindow()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-full text-sm font-medium transition-all shadow-lg shadow-indigo-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    เปิดหน้าจอแสดงผล (จอที่ 2)
+                </button>
+            </div>
+        </nav>
+
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Sidebar / Settings -->
+            <aside class="w-80 bg-slate-800/50 border-r border-white/10 p-6 flex flex-col gap-6 overflow-y-auto">
+                
+                <!-- Time Presets -->
+                <div class="space-y-3">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">ตั้งเวลาด่วน (นาที)</label>
+                    <div class="grid grid-cols-5 gap-2">
+                        <button onclick="setTimer(1)" class="preset-btn p-2 rounded bg-slate-700 hover:bg-blue-600 transition text-sm font-medium">1</button>
+                        <button onclick="setTimer(2)" class="preset-btn p-2 rounded bg-slate-700 hover:bg-blue-600 transition text-sm font-medium">2</button>
+                        <button onclick="setTimer(3)" class="preset-btn p-2 rounded bg-slate-700 hover:bg-blue-600 transition text-sm font-medium">3</button>
+                        <button onclick="setTimer(4)" class="preset-btn p-2 rounded bg-slate-700 hover:bg-blue-600 transition text-sm font-medium">4</button>
+                        <button onclick="setTimer(5)" class="preset-btn p-2 rounded bg-slate-700 hover:bg-blue-600 transition text-sm font-medium">5</button>
+                    </div>
+                </div>
+
+                <!-- Custom Time -->
+                <div class="space-y-3">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">กำหนดเวลาเอง (นาที:วินาที)</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="input-min" placeholder="นาที" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-center focus:border-blue-500 outline-none transition">
+                        <input type="number" id="input-sec" placeholder="วินาที" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-center focus:border-blue-500 outline-none transition">
+                    </div>
+                    <button onclick="setCustomTime()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm transition">ตั้งค่าเวลา</button>
+                </div>
+
+                <hr class="border-white/10">
+
+                <!-- Display Options -->
+                <div class="space-y-3">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">การแสดงผล</label>
+                    <div class="flex items-center justify-between p-3 bg-slate-900 rounded border border-slate-700">
+                        <span class="text-sm text-slate-300">ซ่อนนาทีเมื่อเหลือ 0</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-hide-min" class="sr-only peer" onchange="toggleHideMinutes()">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <hr class="border-white/10">
+
+                <!-- Assets -->
+                <div class="space-y-3">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">กราฟิก</label>
+                    
+                    <label class="flex items-center justify-between p-3 bg-slate-900 rounded cursor-pointer hover:bg-slate-800 transition group">
+                        <span class="text-sm text-slate-300 group-hover:text-white">อัปโหลดโลโก้</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        <input type="file" accept="image/*" onchange="handleImageUpload(this, 'logo')">
+                    </label>
+
+                    <label class="flex items-center justify-between p-3 bg-slate-900 rounded cursor-pointer hover:bg-slate-800 transition group">
+                        <span class="text-sm text-slate-300 group-hover:text-white">อัปโหลดพื้นหลัง</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        <input type="file" accept="image/*" onchange="handleImageUpload(this, 'bg')">
+                    </label>
+                    
+                    <button onclick="clearAssets()" class="text-xs text-red-400 hover:text-red-300 underline w-full text-right">รีเซ็ตรูปภาพ</button>
+                </div>
+            </aside>
+
+            <!-- Main Preview Area -->
+            <main class="flex-1 p-8 flex flex-col items-center justify-center relative bg-gradient-to-br from-blue-900 via-blue-800 to-slate-900">
+                <!-- Preview Container -->
+                <div class="w-full max-w-3xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl relative border border-white/10 group">
+                    <div class="absolute inset-0 flex items-center justify-center bg-slate-800 text-slate-500 text-sm z-0">
+                         (หน้าจอพรีวิว)
+                    </div>
+                    
+                    <!-- Mirrored Display Content -->
+                    <div id="preview-screen" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-cover bg-center transition-all duration-500 overflow-hidden">
+                         <!-- Content injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Control Bar -->
+                <div class="mt-8 flex gap-4">
+                    <button onclick="startTimer()" id="btn-start" class="px-8 py-3 bg-green-600 hover:bg-green-500 rounded-full font-bold text-lg shadow-lg shadow-green-500/20 transition transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        เริ่มจับเวลา
+                    </button>
+                    <button onclick="pauseTimer()" id="btn-pause" class="hidden px-8 py-3 bg-yellow-600 hover:bg-yellow-500 rounded-full font-bold text-lg shadow-lg shadow-yellow-500/20 transition transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        หยุดชั่วคราว
+                    </button>
+                    <button onclick="resetTimer()" class="px-8 py-3 bg-slate-600 hover:bg-slate-500 rounded-full font-bold text-lg shadow-lg transition transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        รีเซ็ต
+                    </button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- DISPLAY VIEW (Second Screen)               -->
+    <!-- ========================================== -->
+    <div id="display-view" class="hidden h-screen w-screen flex-col items-center justify-center relative overflow-hidden transition-bg duration-500">
+        
+        <!-- Fullscreen Trigger Overlay -->
+        <div id="fullscreen-hint" class="absolute inset-0 z-50 flex items-center justify-center bg-black/90 text-white cursor-pointer transition-opacity duration-500 backdrop-blur-sm" onclick="toggleFullscreen()">
+            <div class="text-center animate-pulse group">
+                <div class="w-24 h-24 mx-auto mb-6 rounded-full border-2 border-white/30 flex items-center justify-center group-hover:scale-110 transition-transform bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                </div>
+                <h3 class="text-3xl font-light tracking-wide mb-2">คลิกเพื่อแสดงผลเต็มจอ</h3>
+                <p class="text-white/50 text-sm">แตะ 1 ครั้ง หรือ ดับเบิ้ลคลิก เพื่อ ย่อ/ขยาย เต็มจอ</p>
+            </div>
+        </div>
+
+        <!-- Dynamic Background Image -->
+        <!-- Updated Opacity for visibility -->
+        <div id="display-bg-image" class="absolute inset-0 bg-cover bg-center opacity-100 z-0 transition-all duration-300 blur-sm scale-105"></div>
+        
+        <!-- Gradient Overlay -->
+        <!-- Reduced Opacity from 90 to 70 for better background image visibility -->
+        <div id="display-bg-overlay" class="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-600 to-blue-900 opacity-70 z-1 transition-colors duration-500"></div>
+
+        <!-- Spotlights (Ambient Light) -->
+        <div class="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/4 w-[50vw] h-[50vw] bg-sky-500/30 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow z-2 pointer-events-none"></div>
+        <div class="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/4 w-[50vw] h-[50vw] bg-blue-500/30 blur-[120px] rounded-full mix-blend-screen animate-pulse-slow z-2 pointer-events-none" style="animation-delay: 1s;"></div>
+
+        <!-- Content Container -->
+        <div class="relative z-20 flex flex-col items-center justify-center w-full h-full p-4 text-center">
+            
+            <!-- Logo Area -->
+            <div id="display-logo-container" class="mb-2 transition-all duration-700 transform scale-100 opacity-100">
+                <img id="display-logo" src="" alt="Logo" class="max-h-[25vh] max-w-[80vw] object-contain drop-shadow-2xl animate-glow hidden">
+            </div>
+
+            <!-- Status Text (Wait/Start) -->
+            <h2 id="display-status" class="text-[5vw] font-light tracking-widest text-blue-200 mb-0 opacity-80 uppercase leading-none drop-shadow-lg">
+                รอจับเวลา
+            </h2>
+
+            <!-- Timer Digits -->
+            <div id="display-timer" class="font-semibold text-[35vw] leading-[0.85] tracking-tight text-white tabular-nums drop-shadow-2xl transition-all duration-300 scale-100 relative">
+                <div class="absolute inset-0 blur-3xl opacity-30 bg-white/20 rounded-full z-[-1]"></div> <!-- Glow behind text -->
+                00:00
+            </div>
+
+            <!-- Finished Message -->
+            <h1 id="display-message" class="hidden text-[20vw] font-bold text-white leading-none animate-bounce drop-shadow-xl uppercase tracking-wide">
+                หมดเวลา
+            </h1>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // State Management
+        const state = {
+            mode: 'controller', // 'controller' or 'display'
+            timeTotal: 300, // Seconds
+            timeRemaining: 300,
+            status: 'idle', // idle, running, paused, finished
+            logoSrc: null,
+            bgSrc: null,
+            timerInterval: null,
+            hideZeroMinutes: false // New setting
+        };
+
+        const channel = new BroadcastChannel('countdown_channel');
+
+        // Elements
+        const controllerView = document.getElementById('controller-view');
+        const displayView = document.getElementById('display-view');
+        
+        // --- Initialization ---
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('mode') === 'display') {
+                state.mode = 'display';
+                initDisplayMode();
+            } else {
+                loadSettings(); // Load saved data
+                initControllerMode();
+                initKeyboardShortcuts();
+            }
+        };
+
+        // --- Persistence Logic ---
+        function saveSettings() {
+            try {
+                const settings = {
+                    timeTotal: state.timeTotal,
+                    logoSrc: state.logoSrc,
+                    bgSrc: state.bgSrc,
+                    hideZeroMinutes: state.hideZeroMinutes
+                };
+                localStorage.setItem('countdown_settings', JSON.stringify(settings));
+            } catch (e) {
+                console.warn("Storage failed (likely quota exceeded):", e);
+            }
+        }
+
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('countdown_settings');
+                if (saved) {
+                    const settings = JSON.parse(saved);
+                    if (settings.timeTotal) {
+                        state.timeTotal = settings.timeTotal;
+                        state.timeRemaining = settings.timeTotal;
+                        
+                        // Set input values for visual feedback if custom time
+                        const min = Math.floor(settings.timeTotal / 60);
+                        const sec = settings.timeTotal % 60;
+                        const inputMin = document.getElementById('input-min');
+                        const inputSec = document.getElementById('input-sec');
+                        if (inputMin) inputMin.value = min;
+                        if (inputSec) inputSec.value = sec;
+                    }
+                    if (settings.logoSrc) state.logoSrc = settings.logoSrc;
+                    if (settings.bgSrc) state.bgSrc = settings.bgSrc;
+                    if (typeof settings.hideZeroMinutes !== 'undefined') {
+                        state.hideZeroMinutes = settings.hideZeroMinutes;
+                        // Update checkbox
+                        const checkbox = document.getElementById('toggle-hide-min');
+                        if (checkbox) checkbox.checked = settings.hideZeroMinutes;
+                    }
+                }
+            } catch (e) {
+                console.error("Load settings failed:", e);
+                // Optional: Clear corrupted settings
+                // localStorage.removeItem('countdown_settings');
+            }
+        }
+
+        // --- Logic: Toggle Show Minutes ---
+        function toggleHideMinutes() {
+            const checkbox = document.getElementById('toggle-hide-min');
+            state.hideZeroMinutes = checkbox.checked;
+            saveSettings();
+            updateUI();
+            broadcastState();
+        }
+
+        // --- Keyboard Shortcuts (Controller Only) ---
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ignore if in inputs
+                if (e.target.tagName === 'INPUT') return;
+
+                if (e.code === 'Space' || e.code === 'Enter') {
+                    e.preventDefault(); // Prevent scrolling or default click
+                    if (state.status === 'running') pauseTimer();
+                    else if (state.status === 'paused' || (state.status === 'idle' && state.timeRemaining > 0)) startTimer();
+                }
+                
+                if (e.code === 'Escape') {
+                    resetTimer();
+                }
+            });
+        }
+
+        // --- Controller Logic ---
+        function initControllerMode() {
+            controllerView.classList.remove('hidden');
+            updateUI(); 
+            
+            // Listen for sync requests from new windows
+            channel.onmessage = (event) => {
+                if(event.data.type === 'REQUEST_SYNC') {
+                    broadcastState();
+                }
+            };
+        }
+
+        function openDisplayWindow() {
+            // Try to maximize window on open
+            const width = screen.availWidth;
+            const height = screen.availHeight;
+            const left = 0;
+            const top = 0;
+            
+            window.open(
+                window.location.href + '?mode=display', 
+                'CountdownDisplay', 
+                `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=no`
+            );
+        }
+
+        function setTimer(minutes) {
+            pauseTimerLogic();
+            state.timeTotal = minutes * 60;
+            state.timeRemaining = state.timeTotal;
+            state.status = 'idle';
+            
+            // Update input fields to match preset
+            const inputMin = document.getElementById('input-min');
+            const inputSec = document.getElementById('input-sec');
+            if (inputMin) inputMin.value = minutes;
+            if (inputSec) inputSec.value = 0;
+
+            saveSettings(); 
+            updateUI();
+            broadcastState();
+        }
+
+        function setCustomTime() {
+            const min = parseInt(document.getElementById('input-min').value) || 0;
+            const sec = parseInt(document.getElementById('input-sec').value) || 0;
+            
+            if (min === 0 && sec === 0) return;
+            
+            pauseTimerLogic();
+            state.timeTotal = (min * 60) + sec;
+            state.timeRemaining = state.timeTotal;
+            state.status = 'idle';
+            saveSettings(); 
+            updateUI();
+            broadcastState();
+        }
+
+        function startTimer() {
+            if (state.timeRemaining <= 0) return;
+            state.status = 'running';
+            updateUI();
+            broadcastState();
+            
+            state.timerInterval = setInterval(() => {
+                state.timeRemaining--;
+                
+                if (state.timeRemaining <= 0) {
+                    finishTimer();
+                } else {
+                    broadcastState(); // Sync every tick
+                    renderPreview(); // Update local preview
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            pauseTimerLogic();
+            state.status = 'paused';
+            updateUI();
+            broadcastState();
+        }
+
+        function pauseTimerLogic() {
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+            }
+        }
+
+        function resetTimer() {
+            pauseTimerLogic();
+            state.timeRemaining = state.timeTotal;
+            state.status = 'idle';
+            updateUI();
+            broadcastState();
+        }
+
+        function finishTimer() {
+            pauseTimerLogic();
+            state.timeRemaining = 0;
+            state.status = 'finished';
+            updateUI();
+            broadcastState();
+        }
+
+        function handleImageUpload(input, type) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (type === 'logo') state.logoSrc = e.target.result;
+                    if (type === 'bg') state.bgSrc = e.target.result;
+                    saveSettings(); 
+                    updateUI(); 
+                    broadcastState();
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function clearAssets() {
+            state.logoSrc = null;
+            state.bgSrc = null;
+            saveSettings(); 
+            updateUI(); 
+            broadcastState();
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            
+            // If option is enabled and minutes are 0, return only seconds
+            if (state.hideZeroMinutes && m === 0) {
+                return s.toString().padStart(2, '0');
+            }
+            
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function updateUI() {
+            // Controller Button States
+            const btnStart = document.getElementById('btn-start');
+            const btnPause = document.getElementById('btn-pause');
+            
+            // Update Navbar Logo based on state
+            const navImg = document.getElementById('navbar-logo-img');
+            const navPlaceholder = document.getElementById('navbar-logo-placeholder');
+            
+            if (state.logoSrc) {
+                navImg.src = state.logoSrc;
+                navImg.classList.remove('hidden');
+                navPlaceholder.classList.add('hidden');
+            } else {
+                navImg.classList.add('hidden');
+                navPlaceholder.classList.remove('hidden');
+            }
+
+            // Define SVG Icons separately to avoid potential parsing issues inside ternary operators
+            const iconPlay = `<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            
+            if (state.status === 'running') {
+                btnStart.classList.add('hidden');
+                btnPause.classList.remove('hidden');
+            } else {
+                btnStart.classList.remove('hidden');
+                btnPause.classList.add('hidden');
+                
+                if (state.status === 'paused') {
+                    btnStart.innerHTML = `${iconPlay} ต่อเวลา`;
+                } else {
+                    btnStart.innerHTML = `${iconPlay} เริ่มจับเวลา`;
+                }
+            }
+            renderPreview();
+        }
+
+        // Mirrors the display logic but in a smaller div
+        function renderPreview() {
+            const screen = document.getElementById('preview-screen');
+            updateDisplayVisuals(screen, true);
+        }
+
+        function broadcastState() {
+            channel.postMessage({
+                type: 'UPDATE',
+                state: JSON.parse(JSON.stringify(state)) // Clone state
+            });
+        }
+
+
+        // --- Display Logic ---
+        function initDisplayMode() {
+            displayView.classList.remove('hidden');
+            displayView.classList.add('flex'); // Enable flex
+            // Mouse is visible initially to allow clicking
+            
+            // Setup Mouse Events
+            document.addEventListener('dblclick', toggleFullscreen); 
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                toggleFullscreen();
+            });
+            
+            // Initial Sync
+            channel.postMessage({ type: 'REQUEST_SYNC' });
+
+            channel.onmessage = (event) => {
+                if (event.data.type === 'UPDATE') {
+                    Object.assign(state, event.data.state);
+                    renderDisplay();
+                }
+            };
+        }
+
+        // Toggle Fullscreen instead of just enable
+        function toggleFullscreen() {
+            const elem = document.documentElement;
+            const hint = document.getElementById('fullscreen-hint');
+
+            if (!document.fullscreenElement) {
+                // Enter Fullscreen
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) { /* Safari */
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) { /* IE11 */
+                    elem.msRequestFullscreen();
+                }
+                
+                // Hide Hint and Cursor
+                if(hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => {
+                        hint.classList.add('hidden');
+                    }, 500);
+                }
+                document.body.classList.add('no-cursor');
+
+            } else {
+                // Exit Fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
+                
+                // Show Cursor
+                document.body.classList.remove('no-cursor');
+            }
+        }
+
+        function renderDisplay() {
+            const screen = document.getElementById('display-view');
+            updateDisplayVisuals(screen, false);
+        }
+
+        // Shared Visual Logic (used by both Display Window and Controller Preview)
+        function updateDisplayVisuals(container, isPreview) {
+            const elOverlay = isPreview ? container : document.getElementById('display-bg-overlay');
+            const elBgImage = isPreview ? container : document.getElementById('display-bg-image');
+            const elLogo = isPreview ? null : document.getElementById('display-logo'); 
+            
+            // Check critical state
+            const isCritical = state.status === 'running' && state.timeRemaining <= 10 && state.timeRemaining > 0;
+
+            // Get Elements inside container (for Preview, we need to inject HTML if empty)
+            if (isPreview) {
+                // Simplified DOM update for preview (with mini spotlights)
+                container.innerHTML = `
+                    <div class="absolute inset-0 bg-cover bg-center opacity-100 z-0 blur-sm scale-110 ${isCritical ? 'opacity-0' : 'opacity-100'}" style="background-image: url('${state.bgSrc || ''}')"></div>
+                    <div class="absolute inset-0 transition-colors duration-300 z-10 ${getOverlayColorClass(state.timeRemaining, state.status)} opacity-70"></div>
+                    
+                    <!-- Mini Spotlights -->
+                    <div class="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/4 w-[60%] h-[80%] bg-blue-500/30 blur-[20px] rounded-full mix-blend-screen z-10 pointer-events-none"></div>
+                    <div class="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/4 w-[60%] h-[80%] bg-purple-500/30 blur-[20px] rounded-full mix-blend-screen z-10 pointer-events-none"></div>
+
+                    <div class="relative z-20 flex flex-col items-center justify-center text-white scale-50">
+                        ${state.logoSrc ? `<img src="${state.logoSrc}" class="h-20 mb-2 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]">` : ''}
+                        ${state.status === 'idle' ? '<div class="text-xl uppercase tracking-widest mb-1 opacity-80 drop-shadow-md">รอจับเวลา</div>' : ''}
+                        ${state.status === 'finished' ? 
+                            '<div class="text-6xl font-black uppercase text-white drop-shadow-md">หมดเวลา</div>' : 
+                            `<div class="text-6xl font-bold tabular-nums drop-shadow-md">${formatTime(state.timeRemaining)}</div>`
+                        }
+                    </div>
+                `;
+                return;
+            }
+
+            // --- Full Display Update ---
+
+            // 1. Background Image (Hide if critical to let RED take over)
+            if (state.bgSrc) {
+                elBgImage.style.backgroundImage = `url('${state.bgSrc}')`;
+                
+                if (isCritical) {
+                     elBgImage.classList.add('opacity-0');
+                     elBgImage.classList.remove('opacity-100');
+                } else {
+                     elBgImage.classList.remove('opacity-0');
+                     elBgImage.classList.add('opacity-100');
+                }
+
+            } else {
+                elBgImage.style.backgroundImage = 'none';
+            }
+
+            // 2. Color States (Overlay)
+            // Use getOverlayColorClass for base color
+            // If critical, we handle classes manually to remove smooth transitions for a "scarier" effect
+            
+            // Base Class setup
+            let overlayClasses = `absolute inset-0 z-1 opacity-70 ${getOverlayColorClass(state.timeRemaining, state.status)}`;
+            
+            // 3. Blinking Logic (Red Critical) - SCARY MODE
+            if (isCritical) {
+                // Remove transition for sharp blinking
+                // Add aggressive pulse
+                overlayClasses = `absolute inset-0 z-1 ${getOverlayColorClass(state.timeRemaining, state.status)} animate-blink-severe opacity-100`;
+            } else {
+                // Normal smooth transition
+                overlayClasses += ' transition-colors duration-500';
+            }
+            
+            elOverlay.className = overlayClasses;
+
+            // 4. Logo
+            const logo = document.getElementById('display-logo');
+            if (state.logoSrc) {
+                logo.src = state.logoSrc;
+                logo.classList.remove('hidden');
+                // Always glow if image is present
+                logo.classList.add('animate-glow');
+            } else {
+                logo.classList.add('hidden');
+            }
+
+            // 5. Text Content
+            const statusText = document.getElementById('display-status');
+            const timerText = document.getElementById('display-timer');
+            const msgText = document.getElementById('display-message');
+
+            if (state.status === 'idle') {
+                statusText.classList.remove('hidden');
+                statusText.innerText = 'รอจับเวลา';
+                timerText.classList.remove('hidden');
+                timerText.innerText = formatTime(state.timeRemaining);
+                msgText.classList.add('hidden');
+            } else if (state.status === 'finished') {
+                statusText.classList.add('hidden');
+                timerText.classList.add('hidden');
+                msgText.classList.remove('hidden');
+            } else {
+                // Running or Paused
+                statusText.classList.remove('hidden');
+                statusText.innerText = state.status === 'paused' ? 'หยุดชั่วคราว' : 'กำลังจับเวลา';
+                timerText.classList.remove('hidden');
+                timerText.innerText = formatTime(state.timeRemaining);
+                msgText.classList.add('hidden');
+            }
+        }
+
+        function getOverlayColorClass(time, status) {
+            // SCARY RED GRADIENT for Finished
+            if (status === 'finished') {
+                // Separate variable for complex string to avoid parser confusion
+                const redGradient = 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#ff0000] via-[#990000] to-black';
+                return redGradient;
+            }
+            
+            const blueGradient = 'bg-gradient-to-br from-blue-900 via-blue-600 to-blue-900';
+            
+            if (status === 'idle') return blueGradient;
+            
+            // PURE RED for Critical (Warning)
+            if (time <= 10) return 'bg-[#FF0000]'; 
+            
+            if (time <= 20) return 'bg-yellow-500'; // Warning Yellow
+            
+            return blueGradient;
+        }
+
+    </script>
+</body>
+</html>
