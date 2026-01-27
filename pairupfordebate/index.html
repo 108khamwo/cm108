@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจับคู่ดีเบต (V.45 Hide Cursor)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@100;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #0f1016; 
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1e2542; }
+        ::-webkit-scrollbar-thumb { background: #00c0fa; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0090c0; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+        
+        @keyframes vs-pulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(59,130,246,0.6)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 50px rgba(168,85,247,0.8)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(59,130,246,0.6)); }
+        }
+        .animate-vs { animation: vs-pulse 2s infinite ease-in-out; }
+
+        @keyframes flashEffect { 0% { background-color: white; opacity: 1; } 100% { background-color: transparent; opacity: 0; } }
+        .flash-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+        .trigger-flash { animation: flashEffect 0.5s ease-out forwards; }
+
+        .vs-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 400px;
+            height: 350px;
+        }
+        .vs-text-wrapper {
+            font-family: 'Anton', sans-serif; 
+            font-style: italic;
+            line-height: 1.2;
+            padding-right: 100px;
+            padding-left: 20px;
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 50%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(59,130,246,0.9));
+            overflow: visible;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Card Styles */
+        .candidate-card-vs {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 1.5rem; 
+        }
+        .candidate-card-vs.spinning {
+            transition: none !important; 
+            filter: blur(2px) brightness(0.9);
+            transform: scale(0.98);
+        }
+        .candidate-card-vs.locked {
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: none;
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.8);
+        }
+        .candidate-card-vs.resetting {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+            filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Helpers & DB ---
+        const DB_NAME = 'CM108_Debate_System_V21';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'app_data';
+
+        const dbHelper = {
+            open: () => new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            }),
+            save: async (key, data) => {
+                try {
+                    const db = await dbHelper.open();
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    tx.objectStore(STORE_NAME).put(data, key);
+                } catch(e) { console.error(e); }
+            },
+            get: async (key) => {
+                try {
+                    const db = await dbHelper.open();
+                    return new Promise((resolve) => {
+                        const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = () => resolve(null);
+                    });
+                } catch(e) { return null; }
+            }
+        };
+
+        const Icons = {
+            Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+            Play: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>,
+            Image: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>,
+            Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            Back: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>,
+            Silhouette: () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-full h-full text-black/50 drop-shadow-xl"><path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" /></svg>
+        };
+
+        const formatName = (fullName) => {
+            if (!fullName) return { first: '', last: '' };
+            const cleanedName = fullName.trim();
+            const parts = cleanedName.split(/\s+/);
+            const rawFirst = parts[0] || '';
+            const first = rawFirst.replace(/\|/g, ' '); 
+            const last = parts.slice(1).join(' ') || '';
+            return { first, last };
+        };
+
+        const compressImage = (file, maxWidth = 800) => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if (w > h) { if (w > maxWidth) { h *= maxWidth/w; w = maxWidth; } } 
+                        else { if (h > maxWidth) { w *= maxWidth/h; h = maxWidth; } }
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                };
+            });
+        };
+
+        // --- Components ---
+
+        const Background = ({ bgUrl }) => (
+            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                {bgUrl ? (
+                    <div className="absolute inset-0">
+                        <img src={bgUrl} className="w-full h-full object-cover opacity-40 blur-sm scale-105" />
+                        <div className="absolute inset-0 bg-[#0f1016]/60 mix-blend-multiply"></div>
+                    </div>
+                ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#000000]"></div>
+                )}
+                <div className="absolute -top-[20%] -left-[20%] w-[70vw] h-[70vw] bg-[#00c0fa]/10 blur-[120px] rounded-full mix-blend-screen animate-pulse"></div>
+                <div className="absolute -bottom-[20%] -right-[20%] w-[70vw] h-[70vw] bg-[#ef4444]/10 blur-[120px] rounded-full mix-blend-screen animate-pulse" style={{animationDelay: '2s'}}></div>
+            </div>
+        );
+
+        const MysteryCard = () => {
+            return (
+                <div className="relative w-full aspect-[3/4] md:aspect-[4/5] lg:aspect-[3/4] max-w-md mx-auto animate-fadeIn">
+                    <div className="absolute inset-0 rounded-3xl overflow-hidden bg-[#1e2542] border-[3px] border-white/5 shadow-2xl flex flex-col items-center justify-end">
+                        <div className="absolute bottom-0 w-[120%] h-[60%] bg-white/5 blur-3xl rounded-full transform translate-y-10"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60 z-10"></div>
+                        <div className="w-[80%] h-[70%] opacity-50 mb-10 transform scale-105 relative z-20">
+                            <Icons.Silhouette />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const VSCard = ({ candidate, status }) => {
+            if (!candidate) return <MysteryCard />;
+            
+            const { first, last } = formatName(candidate.name);
+            const isLocked = status === 'locked';
+            const isResetting = status === 'resetting';
+            const candColor = candidate.color || '#888888';
+            
+            const borderStyle = isLocked ? `4px solid ${candColor}` : 'none';
+            const glowStyle = isLocked ? `0 0 50px ${candColor}66` : 'none';
+
+            return (
+                <div className={`relative w-full aspect-[3/4] md:aspect-[4/5] lg:aspect-[3/4] max-w-md mx-auto 
+                    ${status === 'spinning' ? 'candidate-card-vs spinning' : 'candidate-card-vs'} 
+                    ${isLocked ? 'candidate-card-vs locked' : ''}
+                    ${isResetting ? 'candidate-card-vs resetting' : ''}
+                `}>
+                    <div className="absolute inset-0 rounded-3xl bg-[#1e2542] flex flex-col overflow-hidden" 
+                         style={{ border: borderStyle, boxShadow: glowStyle }}>
+                        
+                        <div className="relative flex-1 bg-transparent overflow-hidden">
+                            {candidate.img ? <img src={candidate.img} className="w-full h-full object-cover object-top drop-shadow-2xl" /> : <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400"><Icons.Image /></div>}
+                            <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-[#0f1016] to-transparent pointer-events-none z-10"></div>
+                            {candidate.partyLogo && (
+                                <div className="absolute top-2 right-2 w-16 h-16 z-20 drop-shadow-md">
+                                    <div className="w-full h-full relative">
+                                        <div className="absolute inset-2 bg-white rounded-full opacity-90"></div>
+                                        <img src={candidate.partyLogo} className="w-full h-full object-contain relative z-10 transform scale-110" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="h-[35%] bg-[#0f1016] px-2 flex flex-col items-center justify-center text-center relative overflow-hidden -mt-[2px] z-20">
+                            <div className="absolute inset-0 opacity-20" style={{background: `linear-gradient(to top, ${candColor}, transparent)`}}></div>
+                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-normal truncate w-full px-2 drop-shadow-md py-1 relative z-20">{first}</h2>
+                            <p className="text-base md:text-lg text-white/60 truncate w-full px-4 mt-0 mb-3 font-light leading-normal relative z-20">{last}</p>
+                            <div className="mx-auto px-6 py-1 rounded-full text-base md:text-lg font-medium truncate max-w-[95%] shadow-sm relative z-20 leading-relaxed flex items-center justify-center mb-1" 
+                                 style={{ 
+                                     backgroundColor: `${candColor}33`, 
+                                     border: `1px solid ${candColor}66`,
+                                     color: 'white'
+                                 }}>
+                                {candidate.party || 'ผู้สมัครอิสระ'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [candidates, setCandidates] = React.useState([]);
+            const [matches, setMatches] = React.useState([]);
+            const [logoUrl, setLogoUrl] = React.useState(null);
+            const [bgUrl, setBgUrl] = React.useState(null);
+            const [view, setView] = React.useState('input');
+            const [phase, setPhase] = React.useState('idle'); 
+            const [flash, setFlash] = React.useState(false);
+            const [leftCand, setLeftCand] = React.useState(null);
+            const [rightCand, setRightCand] = React.useState(null);
+            const [finalAnim, setFinalAnim] = React.useState(false);
+            
+            // Auto Mode State
+            const [autoPlay, setAutoPlay] = React.useState(false);
+
+            const timerRef = React.useRef(null);
+            const fileInputRefs = { logo: React.useRef(null), bg: React.useRef(null), backup: React.useRef(null) };
+            
+            const inputBlockRef = React.useRef(false); 
+            const lastEscRef = React.useRef(0);
+
+            // Load Data
+            React.useEffect(() => {
+                const init = async () => {
+                    let savedC = await dbHelper.get('candidates');
+                    if (!savedC) {
+                        const localOld = localStorage.getItem('cm108_candidates');
+                        if (localOld) savedC = JSON.parse(localOld);
+                    }
+                    const savedM = await dbHelper.get('matches') || [];
+                    const savedLogo = await dbHelper.get('logo');
+                    const savedBg = await dbHelper.get('bg');
+                    
+                    if (savedC) setCandidates(savedC);
+                    if (savedM.length) setMatches(savedM);
+                    if (savedLogo) setLogoUrl(savedLogo);
+                    if (savedBg) setBgUrl(savedBg);
+                };
+                init();
+            }, []);
+
+            React.useEffect(() => {
+                dbHelper.save('candidates', candidates);
+                dbHelper.save('matches', matches);
+            }, [candidates, matches]);
+
+            // Auto Play Logic
+            React.useEffect(() => {
+                if (!autoPlay || view !== 'versus') return;
+
+                let autoTimer;
+                
+                if (phase === 'idle') {
+                    const pool = getRemainingCandidatesRef();
+                    if (pool.length >= 2) {
+                        autoTimer = setTimeout(() => {
+                            startRandomizer();
+                        }, 1000); 
+                    }
+                } else if (phase === 'spinning') {
+                    autoTimer = setTimeout(() => {
+                        lockLeft();
+                    }, 2500);
+                } 
+                else if (phase === 'full-locked') {
+                    autoTimer = setTimeout(() => {
+                        confirmMatch();
+                    }, 4000);
+                }
+
+                return () => clearTimeout(autoTimer);
+            }, [autoPlay, phase, view, candidates, matches]); 
+
+            const getRemainingCandidatesRef = () => {
+                const matchedIds = new Set();
+                matches.forEach(m => { matchedIds.add(m.left.id); matchedIds.add(m.right.id); });
+                return candidates.filter(c => !matchedIds.has(c.id));
+            };
+
+            // Handlers
+            const handleExport = () => {
+                const data = { candidates, matches, logoUrl, bgUrl, version: 'V21' };
+                const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cm108_vs_backup_${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        if (data.candidates) { setCandidates(data.candidates); dbHelper.save('candidates', data.candidates); }
+                        if (data.matches) { setMatches(data.matches); dbHelper.save('matches', data.matches); }
+                        if (data.logoUrl) { setLogoUrl(data.logoUrl); dbHelper.save('logo', data.logoUrl); }
+                        if (data.bgUrl) { setBgUrl(data.bgUrl); dbHelper.save('bg', data.bgUrl); }
+                        alert("กู้คืนข้อมูลสำเร็จ!");
+                    } catch (err) { alert("ไฟล์ไม่ถูกต้อง"); }
+                };
+                reader.readAsText(file);
+                e.target.value = null;
+            };
+
+            const handleImageUpload = async (id, field, file) => {
+                if (!file) return;
+                const url = await compressImage(file, 800);
+                setCandidates(prev => prev.map(c => c.id === id ? { ...c, [field]: url } : c));
+            };
+            const updateCandidate = (id, field, value) => {
+                setCandidates(candidates.map(c => c.id === id ? { ...c, [field]: value } : c));
+            };
+            const handleLogo = async (e) => {
+                if(!e.target.files[0]) return;
+                const url = await compressImage(e.target.files[0], 400);
+                setLogoUrl(url); dbHelper.save('logo', url);
+            };
+            const handleBg = async (e) => {
+                if(!e.target.files[0]) return;
+                const url = await compressImage(e.target.files[0], 1024);
+                setBgUrl(url); dbHelper.save('bg', url);
+            };
+
+            // Logic
+            const getRemainingCandidates = () => {
+                const matchedIds = new Set();
+                matches.forEach(m => { matchedIds.add(m.left.id); matchedIds.add(m.right.id); });
+                return candidates.filter(c => !matchedIds.has(c.id));
+            };
+            const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+            
+            const startRandomizer = () => {
+                const pool = getRemainingCandidates();
+                if (pool.length < 2) return;
+
+                if (pool.length === 2) {
+                    setLeftCand(pool[0]);
+                    setRightCand(pool[1]);
+                    setPhase('full-locked'); 
+                    setFlash(true);
+                    setTimeout(() => setFlash(false), 500);
+                    inputBlockRef.current = true;
+                    setTimeout(() => { inputBlockRef.current = false; }, 800);
+                    return;
+                }
+
+                setPhase('spinning');
+                inputBlockRef.current = true; // Block Stop for 0.5s
+                setTimeout(() => { inputBlockRef.current = false; }, 500);
+
+                timerRef.current = setInterval(() => {
+                    const poolNow = getRemainingCandidates();
+                    let l = getRandom(poolNow);
+                    let r = getRandom(poolNow);
+                    while (poolNow.length > 1 && l.id === r.id) r = getRandom(poolNow);
+                    setLeftCand(l); setRightCand(r);
+                }, 50);
+            };
+
+            const lockLeft = () => {
+                if (phase !== 'spinning') return;
+                if (inputBlockRef.current) return;
+
+                clearInterval(timerRef.current);
+                const pool = getRemainingCandidates();
+                const finalLeft = getRandom(pool);
+                const remainingForRight = pool.filter(c => c.id !== finalLeft.id);
+                const finalRight = getRandom(remainingForRight);
+                setLeftCand(finalLeft);
+                setPhase('left-locked');
+                
+                timerRef.current = setInterval(() => { 
+                    let r = getRandom(remainingForRight); 
+                    setRightCand(r); 
+                }, 50);
+                
+                setTimeout(() => lockRight(finalRight), 3500);
+            };
+
+            const lockRight = (fixedRight) => {
+                clearInterval(timerRef.current);
+                setRightCand(fixedRight);
+                setPhase('full-locked');
+                setFlash(true);
+                setTimeout(() => setFlash(false), 500);
+                
+                inputBlockRef.current = true;
+                setTimeout(() => { inputBlockRef.current = false; }, 800);
+            };
+            
+            const confirmMatch = () => {
+                if (phase !== 'full-locked') return;
+                if (inputBlockRef.current) return;
+
+                setPhase('resetting'); 
+                setTimeout(() => {
+                    const newMatch = { id: Date.now(), left: leftCand, right: rightCand, timestamp: new Date().toISOString() };
+                    const nextMatches = [newMatch, ...matches];
+                    setMatches(nextMatches);
+                    
+                    const usedIds = new Set();
+                    nextMatches.forEach(m => { usedIds.add(m.left.id); usedIds.add(m.right.id); });
+                    const remCount = candidates.length - usedIds.size;
+
+                    setLeftCand(null);
+                    setRightCand(null);
+
+                    if (remCount < 2) {
+                        setView('finished');
+                        setPhase('idle');
+                        setAutoPlay(false);
+                    } else {
+                        setPhase('idle');
+                    }
+                }, 600);
+            };
+            
+            const resetAll = () => { if(confirm("ล้างประวัติการจับคู่ทั้งหมด?")) { setMatches([]); setPhase('idle'); setLeftCand(null); setRightCand(null); setView('input'); setAutoPlay(false); } };
+
+            React.useEffect(() => {
+                if (view === 'finished') {
+                    setFinalAnim(false);
+                    const t = setTimeout(() => setFinalAnim(true), 100);
+                    return () => clearTimeout(t);
+                }
+            }, [view]);
+
+            React.useEffect(() => {
+                const handleKey = (e) => {
+                    if (view === 'input') return;
+                    
+                    if (e.code === 'Space' || e.key === 'Enter') {
+                        e.preventDefault();
+                        if (view === 'versus') {
+                            if (phase === 'idle') startRandomizer();
+                            else if (phase === 'spinning') lockLeft();
+                            else if (phase === 'full-locked') confirmMatch();
+                        } else if (view === 'finished') {
+                            // Maybe restart?
+                        }
+                    }
+                    
+                    // Auto Play Toggle
+                    if (e.key === '*') {
+                        setAutoPlay(prev => !prev);
+                    }
+                    
+                    if (e.key === 'Escape') {
+                        const now = Date.now();
+                        if (now - lastEscRef.current < 400) { 
+                            setView('input');
+                            setPhase('idle');
+                            setLeftCand(null);
+                            setRightCand(null);
+                            setAutoPlay(false);
+                            clearInterval(timerRef.current);
+                        } else {
+                            if (phase !== 'idle' && view === 'versus') {
+                                setPhase('idle');
+                                setLeftCand(null);
+                                setRightCand(null);
+                                setAutoPlay(false);
+                                clearInterval(timerRef.current);
+                            } else if (view === 'finished') {
+                                setView('input');
+                            }
+                        }
+                        lastEscRef.current = now;
+                    }
+                };
+                window.addEventListener('keydown', handleKey);
+                return () => window.removeEventListener('keydown', handleKey);
+            }, [view, phase, candidates, matches, leftCand]);
+
+            // --- VIEW: INPUT ---
+            if (view === 'input') {
+                return (
+                    <div className="min-h-screen relative flex flex-col p-6 animate-fadeIn">
+                        <Background bgUrl={bgUrl} />
+                        <header className="relative z-10 flex flex-col xl:flex-row xl:justify-between xl:items-center gap-4 mb-6">
+                            <div className="flex items-center gap-4">
+                                <div onClick={() => fileInputRefs.logo.current.click()} className="cursor-pointer group relative hover:opacity-80 transition">
+                                    {logoUrl ? <img src={logoUrl} className="h-16 w-auto object-contain drop-shadow-lg" /> : <div className="h-16 w-16 bg-white/10 rounded-lg flex items-center justify-center border-2 border-dashed border-white/30 text-white/50 text-xs">Logo</div>}
+                                    <input type="file" ref={fileInputRefs.logo} onChange={handleLogo} className="hidden" accept="image/*" />
+                                </div>
+                                <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#00c0fa] to-white py-2">
+                                    ระบบจับคู่ดีเบต
+                                </h1>
+                            </div>
+                            <div className="flex flex-wrap gap-3 items-center bg-black/20 p-2 rounded-xl backdrop-blur-sm border border-white/5">
+                                <button onClick={() => fileInputRefs.backup.current.click()} className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-300 rounded-lg border border-green-500/20 transition text-sm">
+                                    <Icons.Upload /> กู้คืน
+                                    <input type="file" ref={fileInputRefs.backup} onChange={handleImport} className="hidden" accept=".json" />
+                                </button>
+                                <button onClick={handleExport} className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg border border-blue-500/20 transition text-sm">
+                                    <Icons.Plus /> สำรอง
+                                </button>
+                                <button onClick={() => fileInputRefs.bg.current.click()} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition text-sm"><Icons.Image /> พื้นหลัง <input type="file" ref={fileInputRefs.bg} onChange={handleBg} className="hidden" accept="image/*" /></button>
+                                <button onClick={() => setView('versus')} className="flex items-center gap-2 px-6 py-2 bg-[#00c0fa] hover:bg-[#0090c0] text-black font-bold rounded-lg shadow-lg transition transform hover:scale-105 ml-2"><Icons.Play /> ไปหน้าจับคู่</button>
+                            </div>
+                        </header>
+                        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20 overflow-y-auto pr-2" style={{height: 'calc(100vh - 120px)'}}>
+                            {candidates.map((c) => (
+                                <div key={c.id} className="bg-[#1e2542]/80 border border-white/10 rounded-xl p-4 flex flex-col gap-3 relative group hover:border-[#00c0fa]/50 transition">
+                                    <button onClick={() => setCandidates(candidates.filter(x => x.id !== c.id))} className="absolute top-2 right-2 p-1.5 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition z-20"><Icons.Trash /></button>
+                                    <div className="flex gap-3 h-24">
+                                        <div className="relative w-24 h-24 bg-white rounded-lg overflow-hidden border border-white/10 shrink-0 cursor-pointer">
+                                            {c.img ? <img src={c.img} className="w-full h-full object-contain" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400"><Icons.Image /></div>}
+                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => handleImageUpload(c.id, 'img', e.target.files[0])} />
+                                        </div>
+                                        <div className="flex flex-col justify-between flex-1 gap-2">
+                                            <div className="flex gap-2 items-center">
+                                                <div className="relative w-8 h-8 rounded overflow-hidden border border-white/20 shrink-0">
+                                                     <input type="color" value={c.color || '#00c0fa'} onChange={(e) => updateCandidate(c.id, 'color', e.target.value)} className="absolute -top-2 -left-2 w-12 h-12 p-0 border-0 cursor-pointer" />
+                                                </div>
+                                                <input type="text" value={c.color || '#00c0fa'} onChange={(e) => updateCandidate(c.id, 'color', e.target.value)} className="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-sm text-white/80 focus:outline-none focus:border-[#00c0fa] uppercase font-mono tracking-wide" placeholder="#000000" maxLength={7} />
+                                            </div>
+                                            <div className="relative h-10 w-full bg-black/40 rounded border border-white/10 flex items-center justify-center cursor-pointer">
+                                                {c.partyLogo ? <img src={c.partyLogo} className="h-full w-auto object-contain" /> : <span className="text-[10px] text-white/30">โลโก้พรรค</span>}
+                                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => handleImageUpload(c.id, 'partyLogo', e.target.files[0])} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="text" value={c.name} onChange={(e) => updateCandidate(c.id, 'name', e.target.value)} placeholder="ชื่อผู้สมัคร..." className="bg-transparent border-b border-white/20 px-2 py-1 text-lg text-white focus:border-[#00c0fa] focus:outline-none placeholder-white/20" />
+                                    <input type="text" value={c.party} onChange={(e) => updateCandidate(c.id, 'party', e.target.value)} placeholder="ชื่อพรรค..." className="bg-transparent border-b border-white/20 px-2 py-1 text-sm text-[#00c0fa] focus:border-[#00c0fa] focus:outline-none placeholder-white/20" />
+                                </div>
+                            ))}
+                            <button onClick={() => setCandidates([...candidates, { id: Date.now(), name: '', party: '', color: '#00c0fa' }])} className="h-[230px] border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center text-white/30 hover:text-[#00c0fa] hover:border-[#00c0fa] hover:bg-[#00c0fa]/5 transition gap-2"><Icons.Plus /> เพิ่มผู้สมัคร</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- VIEW: FINISHED ---
+            if (view === 'finished') {
+                const displayMatches = [...matches].reverse();
+
+                return (
+                    <div className="h-screen w-full relative flex flex-col items-center overflow-hidden cursor-none">
+                        <Background bgUrl={bgUrl} />
+                        
+                        <div className={`transition-all duration-1000 ease-in-out fixed z-[100] flex justify-center items-center pointer-events-none 
+                            ${finalAnim ? 'top-4 scale-[0.6] origin-top' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-150'}`}>
+                             {logoUrl ? <img src={logoUrl} className="w-auto h-[35vh] object-contain drop-shadow-[0_0_50px_rgba(0,192,250,0.8)]" /> : <h1 className="text-6xl font-bold opacity-50">LOGO</h1>}
+                        </div>
+
+                        {/* Updated spacing: top-[25vh] */}
+                        <div className={`fixed top-[25vh] z-[90] transition-all duration-1000 delay-500 text-center ${finalAnim ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                            <h2 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg tracking-wider">สรุปผลการจับคู่ดีเบต</h2>
+                            <div className="w-24 h-1 bg-[#00c0fa] mx-auto mt-2 rounded-full shadow-[0_0_10px_#00c0fa]"></div>
+                        </div>
+
+                        {/* Updated spacing: mt-[35vh] */}
+                        <div className={`mt-[35vh] w-full max-w-[95vw] z-10 transition-all duration-1000 delay-700 flex flex-col items-center justify-center ${finalAnim ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`} style={{height: '60vh'}}>
+                            <div className="w-full h-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 content-center justify-center p-4">
+                                {displayMatches.map((m, i) => (
+                                    <div key={m.id} className="bg-[#1e2542]/60 backdrop-blur-md rounded-3xl border border-white/10 p-3 flex flex-col items-center shadow-lg relative overflow-hidden group hover:border-[#00c0fa]/30 transition h-full max-h-[220px]">
+                                        <div className="w-full text-center text-white font-bold text-xl mb-1 drop-shadow-md tracking-wider">
+                                            คู่ที่ {i + 1}
+                                        </div>
+                                        <div className="flex w-full items-center justify-between px-2 flex-1">
+                                            <div className="flex flex-col items-center w-[40%]">
+                                                <div className="relative w-20 h-20 lg:w-24 lg:h-24">
+                                                    <div className="w-full h-full rounded-full overflow-hidden border-2 shadow-md bg-white" style={{borderColor: m.left.color}}>
+                                                        <img src={m.left.img} className="w-full h-full object-cover object-top" />
+                                                    </div>
+                                                    {m.left.partyLogo && (
+                                                        <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm">
+                                                            <img src={m.left.partyLogo} className="w-full h-full object-contain p-0.5" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="text-center w-full mt-2">
+                                                    <div className="text-sm lg:text-base font-bold text-white leading-tight truncate w-full">{formatName(m.left.name).first}</div>
+                                                    <div className="text-xs text-white/70 font-light truncate w-full">{formatName(m.left.name).last}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-center justify-center w-[15%]">
+                                                <div className="text-3xl lg:text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 to-blue-600 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] pr-4 pl-1 py-2 leading-none">VS</div>
+                                            </div>
+                                            <div className="flex flex-col items-center w-[40%]">
+                                                <div className="relative w-20 h-20 lg:w-24 lg:h-24">
+                                                    <div className="w-full h-full rounded-full overflow-hidden border-2 shadow-md bg-white" style={{borderColor: m.right.color}}>
+                                                        <img src={m.right.img} className="w-full h-full object-cover object-top" />
+                                                    </div>
+                                                    {m.right.partyLogo && (
+                                                        <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm">
+                                                            <img src={m.right.partyLogo} className="w-full h-full object-contain p-0.5" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="text-center w-full mt-2">
+                                                    <div className="text-sm lg:text-base font-bold text-white leading-tight truncate w-full">{formatName(m.right.name).first}</div>
+                                                    <div className="text-xs text-white/70 font-light truncate w-full">{formatName(m.right.name).last}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- VIEW: VERSUS ---
+            const remaining = getRemainingCandidates().length;
+            
+            return (
+                <div className="h-screen w-full relative flex flex-col overflow-hidden cursor-none">
+                    {flash && <div className="flash-overlay trigger-flash"></div>}
+                    <Background bgUrl={bgUrl} />
+
+                    <div className="absolute top-4 w-full z-50 flex justify-center items-center pointer-events-none">
+                        {logoUrl ? <img src={logoUrl} className="h-32 md:h-48 drop-shadow-[0_4px_30px_rgba(0,0,0,0.8)] animate-fadeIn" /> : <h1 className="text-5xl font-bold opacity-50">LOGO</h1>}
+                    </div>
+                    {/* Clean UI: Removed visible controls */}
+                    <div className="absolute top-6 right-6 z-50 pointer-events-none">
+                        {autoPlay && <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_#dc2626]"></div>}
+                    </div>
+
+                    <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 pb-20 md:pb-4">
+                        <div className="flex flex-col md:flex-row items-center justify-center w-full max-w-7xl gap-4 md:gap-8 lg:gap-16">
+                            
+                            <div className="w-full md:w-[35%] flex justify-center order-2 md:order-1 relative">
+                                <VSCard candidate={leftCand} status={phase === 'spinning' ? 'spinning' : (phase === 'resetting' ? 'resetting' : (phase === 'full-locked' || phase === 'left-locked' ? 'locked' : 'idle'))} />
+                            </div>
+
+                            <div className="order-1 md:order-2 shrink-0 relative z-30 mb-4 md:mb-0 vs-container">
+                                <div className="animate-vs">
+                                    <div className="vs-text-wrapper text-[10rem] md:text-[12rem]">VS</div>
+                                </div>
+                            </div>
+
+                            <div className="w-full md:w-[35%] flex justify-center order-3 relative">
+                                <VSCard candidate={rightCand} status={phase === 'spinning' || phase === 'left-locked' ? 'spinning' : (phase === 'resetting' ? 'resetting' : (phase === 'full-locked' ? 'locked' : 'idle'))} />
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div className="h-20 bg-[#0f1016]/90 border-t border-white/10 backdrop-blur relative z-40 flex flex-col justify-center">
+                        <div className="flex-1 overflow-x-auto flex items-center gap-4 px-4 custom-scrollbar">
+                            {/* Removed text "ยังไม่มีประวัติการจับคู่" */}
+                            {matches.map((m, i) => (
+                                <div key={m.id} className="shrink-0 flex items-center bg-white/5 rounded-lg border border-white/10 p-1.5 gap-2 min-w-[100px] justify-center opacity-70 hover:opacity-100 transition">
+                                    <div className="text-[10px] font-mono text-white/30">#{matches.length - i}</div>
+                                    <img src={m.left.img || ''} className="w-10 h-10 rounded bg-slate-700 object-cover" style={{border: `2px solid ${m.left.color||'#555'}`}} />
+                                    <span className="text-[#00c0fa] font-bold text-[10px] italic">VS</span>
+                                    <img src={m.right.img || ''} className="w-10 h-10 rounded bg-slate-700 object-cover" style={{border: `2px solid ${m.right.color||'#555'}`}} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
