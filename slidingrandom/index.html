@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบสุ่มผู้สมัคร - เจียงใหม่ดีเบต เลือกตั้ง 69 (Stable Loop)</title>
+    <title>ระบบสุ่มผู้สมัคร - เจียงใหม่ดีเบต เลือกตั้ง 69 (Smooth Stop)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -230,7 +230,7 @@
             const speedRef = React.useRef(0);
             const animationRef = React.useRef(null);
             const stateRef = React.useRef('idle'); 
-            const frictionRef = React.useRef(0.96); 
+            const frictionRef = React.useRef(0.98); // ปรับแรงเสียดทานให้นุ่มขึ้น (จาก 0.96 เป็น 0.98)
             const cloneMultiplierRef = React.useRef(20); 
 
             const [logoUrl, setLogoUrl] = React.useState(null);
@@ -364,19 +364,13 @@
                 reader.readAsText(file);
             };
 
-            // Fix: บังคับให้สร้าง Pool อย่างน้อย 20 ชุด หรือมากพอที่จะไม่เกิดช่องว่าง
             const buildDisplayPool = (list) => {
                 if (list.length === 0) return [];
-                
-                // คำนวณให้มี item ใน pool ประมาณ 60-80 ชิ้น เพื่อความปลอดภัยสูงสุด
                 const targetPoolSize = 60;
                 const calculated = Math.ceil(targetPoolSize / list.length);
-                // บังคับขั้นต่ำ 20 และต้องเป็นเลขคู่
                 let multiplier = Math.max(20, calculated);
                 if (multiplier % 2 !== 0) multiplier++;
-                
                 cloneMultiplierRef.current = multiplier;
-
                 let expanded = [];
                 for(let i=0; i < multiplier; i++) expanded.push(...list);
                 return expanded;
@@ -402,16 +396,12 @@
                 
                 positionRef.current += speedRef.current;
                 
-                // Fix: ใช้ Logic การ Reset แบบ Half-Jump ที่เสถียรที่สุด
+                // Stable Loop Logic
                 const totalWidth = displayPool.length * CARD_WIDTH;
                 const halfWidth = totalWidth * 0.5;
-                
-                // ถ้าเลย 75% ให้กระโดดกลับมา 25% (ถอยหลังไปครึ่งทาง)
-                // เนื่องจาก Pool เราสร้างแบบสมมาตร (Clone) ภาพจะเหมือนเดิมเป๊ะ
                 if (positionRef.current > totalWidth * 0.75) {
                     positionRef.current -= halfWidth;
                 }
-                // ถ้าต่ำกว่า 25% (กรณีหมุนกลับ) ให้กระโดดไป 75%
                 if (positionRef.current < totalWidth * 0.25) {
                     positionRef.current += halfWidth;
                 }
@@ -423,7 +413,8 @@
 
                 if (stateRef.current === 'stopping') {
                     speedRef.current *= frictionRef.current; 
-                    if (speedRef.current < 0.8) { 
+                    // รอให้ช้าลงกว่าเดิม (จาก 0.8 เหลือ 0.5) แล้วค่อย Snap เพื่อความนุ่ม
+                    if (speedRef.current < 0.5) { 
                         stateRef.current = 'snapping';
                     }
                 }
@@ -500,7 +491,8 @@
             const stopSpin = () => { 
                 if (stateRef.current !== 'spinning') return;
                 stateRef.current = 'stopping'; 
-                frictionRef.current = 0.96 + (Math.random() * 0.01);
+                // ปรับแรงเสียดทานให้นุ่มขึ้น (0.98 แทน 0.96)
+                frictionRef.current = 0.98 + (Math.random() * 0.005);
             };
 
             const resetRound = () => {
