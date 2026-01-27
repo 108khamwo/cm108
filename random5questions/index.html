@@ -125,8 +125,8 @@
         }) => {
             
             const numberSizeClass = totalCards > 6 
-                ? "text-6xl" 
-                : "text-7xl md:text-9xl lg:text-[11rem]"; 
+                ? "text-5xl" 
+                : "text-6xl md:text-8xl lg:text-[9rem]"; 
 
             const activeStyle = isHighlighted 
                 ? "border-white bg-slate-800 scale-105 shadow-[0_0_60px_rgba(0,192,250,0.8),0_0_30px_rgba(168,85,247,0.6)] z-20 ring-4 ring-white/20"
@@ -166,7 +166,7 @@
                             flex items-center justify-center
                             transition-all duration-500
                             bg-white/5 border border-white/10
-                            ${totalCards <= 5 ? 'h-32 md:h-48 lg:h-64' : 'h-24 md:h-32'} 
+                            ${totalCards <= 5 ? 'h-28 md:h-40 lg:h-56' : 'h-20 md:h-28'} 
                             ${isHighlighted 
                                 ? 'scale-110 bg-[#00c0fa] border-white border-4 shadow-[0_0_60px_rgba(255,255,255,0.8)]' 
                                 : 'scale-100 group-hover:scale-110 group-hover:bg-[#00c0fa]/20 group-hover:border-[#00c0fa] group-hover:shadow-[0_0_50px_rgba(0,192,250,0.8)]'
