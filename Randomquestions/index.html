@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (Optimized)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #1e2542; 
+            color: white;
+            overflow: hidden;
+        }
+
+        body.game-mode {
+            cursor: none !important;
+        }
+        body.game-mode * {
+            cursor: none !important;
+        }
+
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .custom-cursor {
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .hide-cursor .custom-cursor {
+            opacity: 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 4s linear infinite;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+            70% { transform: scale(1.05) translateY(-5px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-pop-in {
+            opacity: 0;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .flash-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #22d3ee 0%, #e879f9 100%);
+            z-index: 10000; 
+            opacity: 0;
+            pointer-events: none;
+        }
+        .flash-overlay.flash-in {
+            animation: flashIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .flash-overlay.flash-out {
+            animation: flashOut 0.6s ease-out forwards;
+        }
+
+        @keyframes flashIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        @keyframes flashOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="hide-cursor"> 
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ไอคอน
+        const Icons = {
+            Play: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+            X: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            RotateCcw: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
+            Sparkles: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M2 7h4"/><path d="M2 11h4"/><path d="M19 17v4"/><path d="M15 17v4"/><path d="M22 21h-4"/><path d="M22 17h-4"/></svg>,
+            HelpCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>,
+            Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            Image: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>,
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            UploadCloud: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+        };
+
+        // --- Optimized Card Component (React.memo) ---
+        // แยก Component ออกมาและใช้ React.memo เพื่อป้องกันการ Render ซ้ำทั้งหน้าจอเมื่อไฟวิ่ง
+        const CardItem = React.memo(({ 
+            q, idx, isHighlighted, isAutoRandomizing, isStopping, openCard, setHighlightedCard, 
+            activeCardIndex, cardsInteractive, isCrowded 
+        }) => {
+            const numberSizeClass = isCrowded 
+                ? "text-3xl md:text-5xl lg:text-6xl" 
+                : "text-4xl md:text-6xl lg:text-7xl";
+
+            const activeCardClasses = "group-hover:-translate-y-4 group-hover:scale-105 group-hover:shadow-[0_0_100px_15px_rgba(0,192,250,0.8),0_0_40px_10px_rgba(168,85,247,0.6)] group-hover:border-[#00c0fa] group-hover:z-50";
+            const manualActiveClasses = "-translate-y-6 scale-125 border-4 border-white shadow-[0_0_120px_40px_rgba(0,192,250,1),0_0_60px_20px_rgba(255,255,255,0.9)] z-[100] bg-slate-800";
+            
+            // Logic Animation Duration: ถ้าสุ่มอยู่ให้เร็ว (100ms) ถ้าหยุดให้ช้าลง (500ms)
+            const transitionClass = isAutoRandomizing 
+                ? (isStopping ? 'duration-500 ease-out' : 'duration-100 ease-linear')
+                : 'duration-300 ease-in-out';
+
+            return (
+                <button
+                    onClick={() => !isAutoRandomizing && openCard(idx)}
+                    onMouseEnter={() => !isAutoRandomizing && setHighlightedCard(null)}
+                    className={`group relative w-full h-full perspective-1000 outline-none focus:outline-none transition-all ${transitionClass} animate-pop-in ${isHighlighted ? 'z-50' : 'hover:z-50'}
+                        ${cardsInteractive ? '' : 'pointer-events-none'}`}
+                >
+                    {/* Background Card: ลบ backdrop-blur ออกเพื่อประสิทธิภาพ และใช้สีทึบแบบโปร่งแสงแทน */}
+                    <div className={`absolute inset-0 bg-gradient-to-br from-slate-800/95 to-slate-900/95 border rounded-xl md:rounded-2xl shadow-xl transform transition-all will-change-transform ${transitionClass} flex flex-col items-center justify-center overflow-hidden p-2
+                        ${!isAutoRandomizing ? activeCardClasses : ''}
+                        ${isHighlighted ? manualActiveClasses : 'border-white/70 shadow-lg shadow-black/30'}`}>
+                        
+                        {/* ข้อความคำถามหมายเลข */}
+                        <div className={`relative z-10 ${isCrowded ? 'mb-2 md:mb-4' : 'mb-3 md:mb-6'} text-white ${isCrowded ? 'text-sm md:text-xl' : 'text-base md:text-2xl'} font-medium transition-colors group-hover:text-[#00c0fa] ${isHighlighted ? 'text-white font-bold drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]' : ''}`}>
+                            คำถามหมายเลข
+                        </div>
+
+                        {/* วงกลมตัวเลข */}
+                        <div className={`relative z-10 h-[60%] aspect-square max-h-48 rounded-full flex items-center justify-center transition-all ${transitionClass} bg-white/5 border border-white/10
+                            ${!isAutoRandomizing ? 'group-hover:scale-110 group-hover:bg-[#00c0fa]/20 group-hover:border-[#00c0fa] group-hover:shadow-[0_0_50px_rgba(0,192,250,0.8)]' : ''}
+                            ${isHighlighted ? 'scale-110 bg-[#00c0fa] border-white border-4 shadow-[0_0_60px_rgba(255,255,255,0.8)]' : ''}`}>
+                            
+                            <div className={`absolute inset-0 rounded-full bg-white/5 border border-white/10 transition-colors 
+                                group-hover:border-[#00c0fa]/50 ${isHighlighted ? 'border-white' : ''}`}></div>
+                            
+                            {/* Effects: ลดการเบลอตอนสุ่มเร็วๆ */}
+                            <div className={`absolute -inset-1 rounded-full bg-gradient-to-tr from-transparent via-[#00c0fa] via-50% to-transparent opacity-80 blur-sm animate-spin-slow transition-opacity ${transitionClass} 
+                                ${!isAutoRandomizing ? 'group-hover:opacity-100' : ''} ${isHighlighted ? 'opacity-100 mix-blend-screen' : ''}`}></div>
+
+                            <div className={`absolute -inset-1 rounded-full bg-gradient-to-bl from-transparent via-purple-500 to-transparent opacity-30 blur-sm animate-spin-slow transition-opacity ${transitionClass} 
+                                ${!isAutoRandomizing ? 'group-hover:opacity-50' : ''} ${isHighlighted ? 'opacity-0' : ''}`}></div>
+                            
+                            <div className={`absolute inset-1 rounded-full bg-slate-900/80 flex items-center justify-center backdrop-blur-sm border border-white/10 transition-colors 
+                                group-hover:border-[#00c0fa] ${isHighlighted ? 'border-transparent bg-[#00c0fa]' : ''}`}>
+                                <span className={`${numberSizeClass} font-bold text-white drop-shadow-[0_0_15px_rgba(0,192,250,0.9)] z-20`}>
+                                    {idx + 1}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {/* Glow Background: ซ่อนตอนสุ่มเร็วๆ เพื่อลด Lag */}
+                        <div className={`absolute -bottom-10 -right-10 w-40 h-40 bg-purple-500/0 blur-3xl rounded-full transition-all ${transitionClass} 
+                            group-hover:bg-purple-600/60 ${isHighlighted ? 'bg-white/30 mix-blend-overlay' : ''}`}></div>
+                        
+                        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-[#00c0fa]/0 blur-xl rounded-full transition-all ${transitionClass}
+                            group-hover:bg-[#00c0fa]/50 group-hover:w-full group-hover:h-full ${isHighlighted ? 'bg-[#00c0fa]/80 w-[150%] h-[150%]' : ''}`}></div>
+                    </div>
+                </button>
+            );
+        });
+
+        const App = () => {
+            const [gameState, setGameState] = React.useState('input'); 
+            const [questions, setQuestions] = React.useState([]);
+            
+            const [inputText, setInputText] = React.useState(() => {
+                const saved = localStorage.getItem('debate_questions');
+                if (saved !== null) return saved;
+                return `นโยบายเร่งด่วน 100 วันแรกของคุณคืออะไร?
+คุณมีแนวทางแก้ไขปัญหาเศรษฐกิจถดถอยอย่างไร?
+จุดยืนของคุณเกี่ยวกับความเท่าเทียมทางเพศเป็นอย่างไร?
+คุณจะจัดการกับปัญหาฝุ่น PM 2.5 อย่างยั่งยืนได้อย่างไร?
+วิสัยทัศน์ของคุณต่อการศึกษาไทยในอีก 5 ปีข้างหน้า?
+คุณคิดอย่างไรกับการกระจายอำนาจสู่ท้องถิ่น?`;
+            });
+
+            const [activeCardIndex, setActiveCardIndex] = React.useState(null);
+            const [removedCards, setRemovedCards] = React.useState([]);
+            
+            const [highlightedCard, setHighlightedCard] = React.useState(null);
+            const [cardsInteractive, setCardsInteractive] = React.useState(false);
+            const [flashState, setFlashState] = React.useState(''); 
+
+            // Auto-Randomizer State
+            const [isAutoRandomizing, setIsAutoRandomizing] = React.useState(false);
+            const [isStopping, setIsStopping] = React.useState(false);
+
+            const randomizerRef = React.useRef(null);
+            const speedRef = React.useRef(50);
+            const stoppingRef = React.useRef(false); 
+
+            const [logoUrl, setLogoUrl] = React.useState(() => {
+                return localStorage.getItem('debate_logo') || 'logo_debate.png';
+            });
+            const [bgUrl, setBgUrl] = React.useState(() => {
+                return localStorage.getItem('debate_bg') || null;
+            });
+            
+            const fileInputRef = React.useRef(null);
+            const bgInputRef = React.useRef(null);
+            const restoreInputRef = React.useRef(null); 
+            const cursorRef = React.useRef(null);
+            
+            const inputBufferRef = React.useRef('');
+            const inputTimeoutRef = React.useRef(null);
+
+            React.useEffect(() => {
+                if (gameState === 'playing') {
+                    document.body.classList.add('game-mode');
+                } else {
+                    document.body.classList.remove('game-mode');
+                }
+            }, [gameState]);
+
+            React.useEffect(() => {
+                if (gameState === 'playing') {
+                    setCardsInteractive(false);
+                    requestAnimationFrame(() => {
+                        if (cursorRef.current) {
+                            cursorRef.current.style.transform = `translate3d(0px, 0px, 0) translate(-50%, -50%)`;
+                        }
+                    });
+                    const timer = setTimeout(() => {
+                        setCardsInteractive(true);
+                    }, 2000); 
+                    return () => clearTimeout(timer);
+                }
+            }, [gameState]);
+
+            const openCard = (index) => {
+                if (flashState !== '') return; 
+
+                setFlashState('flash-in');
+
+                setTimeout(() => {
+                    setActiveCardIndex(index); 
+                    setFlashState('flash-out');
+                    setTimeout(() => {
+                        setFlashState('');
+                    }, 600); 
+                }, 300);
+            };
+
+            // Logic ระบบสุ่มอัตโนมัติ
+            const runRandomizerStep = (currentIndex) => {
+                const availableIndices = questions
+                    .map((_, i) => i)
+                    .filter(i => !removedCards.includes(i));
+                
+                if (availableIndices.length === 0) return;
+
+                let currentPos = availableIndices.indexOf(currentIndex);
+                if (currentPos === -1) currentPos = -1; 
+                
+                const nextPos = (currentPos + 1) % availableIndices.length;
+                const nextIndex = availableIndices[nextPos];
+
+                setHighlightedCard(nextIndex);
+
+                if (stoppingRef.current) {
+                    const randomFriction = 1.1 + Math.random() * 0.2; 
+                    speedRef.current = Math.floor(speedRef.current * randomFriction);
+                    
+                    if (Math.random() < 0.3) {
+                         speedRef.current += Math.floor(Math.random() * 100);
+                    }
+
+                    const randomStopThreshold = 800 + Math.random() * 700;
+
+                    if (speedRef.current > randomStopThreshold) {
+                        setIsAutoRandomizing(false);
+                        stoppingRef.current = false;
+                        setIsStopping(false);
+                        
+                        setTimeout(() => {
+                            openCard(nextIndex);
+                            setHighlightedCard(null);
+                        }, 2000);
+                        return;
+                    }
+                }
+
+                randomizerRef.current = setTimeout(() => {
+                    runRandomizerStep(nextIndex);
+                }, speedRef.current);
+            };
+
+            const toggleRandomizer = () => {
+                const availableIndices = questions
+                    .map((_, i) => i)
+                    .filter(i => !removedCards.includes(i));
+
+                if (availableIndices.length === 0) return;
+
+                if (availableIndices.length === 1) {
+                    openCard(availableIndices[0]);
+                    return;
+                }
+
+                if (!isAutoRandomizing) {
+                    setIsAutoRandomizing(true);
+                    setIsStopping(false);
+                    stoppingRef.current = false;
+                    speedRef.current = 250; 
+                    
+                    let startIdx = highlightedCard;
+                    if (startIdx === null || !availableIndices.includes(startIdx)) {
+                        startIdx = availableIndices[availableIndices.length - 1]; 
+                    }
+                    
+                    runRandomizerStep(startIdx);
+                } else {
+                    if (!stoppingRef.current) {
+                        stoppingRef.current = true;
+                        setIsStopping(true);
+                    }
+                }
+            };
+
+            React.useEffect(() => {
+                const handleKeyInput = (e) => {
+                    if (gameState !== 'playing' || activeCardIndex !== null) return;
+
+                    if (e.code === 'Space') {
+                        e.preventDefault(); 
+                        toggleRandomizer();
+                        return;
+                    }
+
+                    if (isAutoRandomizing) return;
+
+                    if (/^\d$/.test(e.key)) {
+                        if (inputTimeoutRef.current) clearTimeout(inputTimeoutRef.current);
+                        inputBufferRef.current += e.key;
+                        
+                        inputTimeoutRef.current = setTimeout(() => {
+                            const num = parseInt(inputBufferRef.current, 10);
+                            const index = num - 1; 
+                            
+                            if (index >= 0 && index < questions.length && !removedCards.includes(index)) {
+                                setHighlightedCard(index);
+                            } else {
+                                setHighlightedCard(null);
+                            }
+                            inputBufferRef.current = '';
+                        }, 1000); 
+                    } 
+                    else if (e.key === 'Enter') {
+                        if (highlightedCard !== null) {
+                            openCard(highlightedCard); 
+                            setHighlightedCard(null); 
+                        }
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyInput);
+                return () => {
+                    window.removeEventListener('keydown', handleKeyInput);
+                    if (inputTimeoutRef.current) clearTimeout(inputTimeoutRef.current);
+                };
+            }, [gameState, activeCardIndex, questions, removedCards, highlightedCard, flashState, isAutoRandomizing]); 
+
+            React.useEffect(() => {
+                return () => {
+                    if (randomizerRef.current) clearTimeout(randomizerRef.current);
+                };
+            }, []);
+
+            React.useEffect(() => {
+                let timer;
+                const updateCursorPosition = (e) => {
+                    if (cursorRef.current) {
+                        cursorRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
+                    }
+                    document.body.classList.remove('hide-cursor');
+                    clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        document.body.classList.add('hide-cursor');
+                    }, 3000); 
+                };
+                window.addEventListener('mousemove', updateCursorPosition);
+                return () => {
+                    window.removeEventListener('mousemove', updateCursorPosition);
+                    clearTimeout(timer);
+                };
+            }, []);
+
+            React.useEffect(() => {
+                if (gameState === 'playing' && questions.length > 0 && removedCards.length === questions.length && !isAutoRandomizing) {
+                    setTimeout(() => setGameState('finished'), 500);
+                }
+            }, [removedCards, questions.length, gameState, isAutoRandomizing]);
+
+            React.useEffect(() => {
+                localStorage.setItem('debate_questions', inputText);
+            }, [inputText]);
+
+            const handleStart = () => {
+                const qList = inputText
+                    .split('\n')
+                    .map(q => q.trim())
+                    .filter(q => q.length > 0);
+
+                if (qList.length === 0) {
+                    alert('กรุณาใส่คำถามอย่างน้อย 1 ข้อ');
+                    return;
+                }
+
+                setQuestions(qList);
+                setRemovedCards([]);
+                setActiveCardIndex(null);
+                setGameState('playing');
+            };
+
+            const closeCard = () => {
+                if (activeCardIndex !== null) {
+                    setRemovedCards([...removedCards, activeCardIndex]);
+                    setActiveCardIndex(null);
+                }
+            };
+
+            const resetGame = () => {
+                setGameState('input');
+                setRemovedCards([]);
+                setActiveCardIndex(null);
+                setIsAutoRandomizing(false);
+                setIsStopping(false);
+                setHighlightedCard(null);
+                if (randomizerRef.current) clearTimeout(randomizerRef.current);
+            };
+
+            React.useEffect(() => {
+                const handleKeyDown = (event) => {
+                    if ((event.key === 'Escape' || event.key === 'Enter') && activeCardIndex !== null) {
+                        closeCard();
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [activeCardIndex, removedCards]);
+
+            // Handle Logo Upload
+            const handleLogoClick = () => {
+                fileInputRef.current.click();
+            };
+
+            const handleFileChange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const newLogoUrl = reader.result;
+                        setLogoUrl(newLogoUrl);
+                        try {
+                            localStorage.setItem('debate_logo', newLogoUrl);
+                        } catch (e) {
+                            console.error("Logo too large to save");
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            // Handle Background Upload
+            const handleBgClick = () => {
+                bgInputRef.current.click();
+            };
+
+            const handleBgChange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+                            const MAX_SIZE = 1280; 
+                            if (width > height) {
+                                if (width > MAX_SIZE) {
+                                    height *= MAX_SIZE / width;
+                                    width = MAX_SIZE;
+                                }
+                            } else {
+                                if (height > MAX_SIZE) {
+                                    width *= MAX_SIZE / height;
+                                    height = MAX_SIZE;
+                                }
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const newBgUrl = canvas.toDataURL('image/jpeg', 0.7);
+                            try {
+                                localStorage.setItem('debate_bg', newBgUrl);
+                                setBgUrl(newBgUrl);
+                            } catch (error) {
+                                console.error("LocalStorage Limit Exceeded", error);
+                                alert("รูปภาพมีขนาดใหญ่เกินไป ระบบไม่สามารถบันทึกค่าได้ (แต่จะแสดงผลให้ในรอบนี้)");
+                                setBgUrl(newBgUrl); 
+                            }
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleExport = () => {
+                const data = {
+                    questions: inputText,
+                    logo: logoUrl,
+                    bg: bgUrl
+                };
+                const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'debate_backup.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            const handleImportClick = () => {
+                restoreInputRef.current.click();
+            };
+
+            const handleImport = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.questions) {
+                            setInputText(data.questions);
+                            localStorage.setItem('debate_questions', data.questions);
+                        }
+                        if (data.logo) {
+                            setLogoUrl(data.logo);
+                            localStorage.setItem('debate_logo', data.logo);
+                        }
+                        if (data.bg) {
+                            setBgUrl(data.bg);
+                            localStorage.setItem('debate_bg', data.bg);
+                        }
+                        alert('กู้คืนข้อมูลเรียบร้อยแล้ว');
+                    } catch (err) {
+                        alert('ไฟล์ไม่ถูกต้อง หรือ ข้อมูลเสียหาย');
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = '';
+            };
+
+            return (
+                <div className="h-screen w-full bg-[#1e2542] overflow-hidden relative flex flex-col">
+                    
+                    <div className={`flash-overlay ${flashState}`}></div>
+
+                    {gameState === 'playing' && (
+                        <div 
+                            ref={cursorRef}
+                            className="custom-cursor fixed top-0 left-0 pointer-events-none z-[9999]"
+                            style={{ transform: 'translate(-50%, -50%)' }}
+                        >
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,1)]"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[#00c0fa] rounded-full blur-md opacity-60"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-[#00c0fa] rounded-full blur-xl opacity-20"></div>
+                        </div>
+                    )}
+
+                    <div className="fixed inset-0 z-0 pointer-events-none">
+                        {bgUrl && (
+                            <div className="absolute inset-0">
+                                <img src={bgUrl} alt="Background" className="w-full h-full object-cover blur-sm scale-105" />
+                                <div className="absolute inset-0 bg-[#1e2542]/80 mix-blend-multiply"></div>
+                                <div className="absolute inset-0 bg-[#1e2542]/60"></div>
+                            </div>
+                        )}
+                        
+                        <div className="absolute top-1/2 left-0 -translate-x-1/4 -translate-y-1/2 w-[50vh] h-[50vh] md:w-[800px] md:h-[800px] bg-[#00c0fa]/30 blur-[100px] rounded-full mix-blend-screen pointer-events-none"></div>
+                        <div className="absolute top-1/2 right-0 translate-x-1/4 -translate-y-1/2 w-[50vh] h-[50vh] md:w-[800px] md:h-[800px] bg-[#a855f7]/30 blur-[100px] rounded-full mix-blend-screen pointer-events-none"></div>
+                    </div>
+
+                    <div className="relative z-10 container mx-auto px-4 py-4 flex-1 flex flex-col h-full">
+                        
+                        <header className="flex justify-between items-center mb-4 border-b border-[#00c0fa]/20 pb-2 shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div 
+                                    className="cursor-pointer" 
+                                    onClick={handleLogoClick}
+                                    title="คลิกเพื่อเปลี่ยนรูปโลโก้"
+                                >
+                                    <img 
+                                        src={logoUrl} 
+                                        alt="Logo"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "https://placehold.co/100x100/0f172a/00c0fa?text=LOGO";
+                                        }}
+                                        className="h-16 w-auto object-contain"
+                                    />
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handleFileChange} 
+                                        accept="image/*" 
+                                        className="hidden" 
+                                    />
+                                </div>
+
+                                <h1 className="text-2xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[#00c0fa] to-white hidden md:block py-2 leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                                    คำถาม "เจียงใหม่ดีเบต เลือกตั้ง 69"
+                                </h1>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                
+                                {gameState === 'input' && (
+                                    <>
+                                        <button 
+                                            onClick={handleExport}
+                                            className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded-lg transition-colors"
+                                            title="สำรองข้อมูล (Backup)"
+                                        >
+                                            <Icons.Download />
+                                        </button>
+
+                                        <button 
+                                            onClick={handleImportClick}
+                                            className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-400/10 rounded-lg transition-colors"
+                                            title="กู้คืนข้อมูล (Restore)"
+                                        >
+                                            <Icons.UploadCloud />
+                                            <input 
+                                                type="file" 
+                                                ref={restoreInputRef} 
+                                                onChange={handleImport} 
+                                                accept=".json" 
+                                                className="hidden" 
+                                            />
+                                        </button>
+
+                                        <div className="w-px h-6 bg-white/20 mx-1"></div>
+
+                                        <button 
+                                            onClick={handleBgClick}
+                                            className="p-2 text-[#00c0fa]/50 hover:text-[#00c0fa] hover:bg-[#00c0fa]/10 rounded-lg transition-colors"
+                                            title="เปลี่ยนรูปพื้นหลัง"
+                                        >
+                                            <Icons.Image />
+                                            <input 
+                                                type="file" 
+                                                ref={bgInputRef} 
+                                                onChange={handleBgChange} 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                            />
+                                        </button>
+                                    </>
+                                )}
+
+                                {gameState !== 'input' && (
+                                    <button 
+                                        onClick={resetGame}
+                                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#00c0fa] hover:text-white transition-colors rounded-lg hover:bg-[#00c0fa]/10"
+                                    >
+                                        CM108 x MCOT x สวท.เชียงใหม่
+                                    </button>
+                                )}
+                            </div>
+                        </header>
+
+                        {gameState === 'input' && (
+                            <div className="flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto w-full animate-fadeIn min-h-0 overflow-y-auto py-4">
+                                <div className="w-full bg-[#1e2542]/90 backdrop-blur-xl border border-[#00c0fa]/30 rounded-2xl p-6 md:p-8 shadow-2xl flex flex-col h-full">
+                                    <h2 className="text-xl font-semibold mb-4 text-[#00c0fa] flex items-center gap-2 shrink-0">
+                                        <Icons.Sparkles />
+                                        เตรียมชุดคำถาม
+                                    </h2>
+                                    <div className="relative group flex-1 min-h-0 flex flex-col">
+                                        <textarea
+                                            value={inputText}
+                                            onChange={(e) => setInputText(e.target.value)}
+                                            placeholder="พิมพ์คำถามของคุณที่นี่... (1 บรรทัด ต่อ 1 คำถาม)"
+                                            className="w-full flex-1 bg-[#0f1020]/60 border border-white/10 rounded-xl p-4 text-lg leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#00c0fa]/50 focus:border-[#00c0fa]/50 transition-all resize-none shadow-inner text-white placeholder-slate-400"
+                                        ></textarea>
+                                        <div className="absolute bottom-4 right-4 text-slate-500 text-sm pointer-events-none">
+                                            {inputText.split('\n').filter(l => l.trim().length > 0).length} คำถาม
+                                        </div>
+                                    </div>
+                                    
+                                    <button
+                                        onClick={handleStart}
+                                        className="mt-6 w-full bg-gradient-to-r from-[#00c0fa] to-blue-600 hover:from-[#33cffa] hover:to-blue-500 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-[#00c0fa]/30 transform transition-all hover:-translate-y-1 hover:scale-[1.01] flex items-center justify-center gap-3 text-lg shrink-0"
+                                    >
+                                        <Icons.Play />
+                                        เริ่มการสุ่มคำถาม
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'playing' && activeCardIndex === null && (
+                            <div className="flex-1 min-h-0 w-full pb-2">
+                                <div className="h-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4 auto-rows-fr">
+                                    {questions.map((q, idx) => ({ q, idx }))
+                                        .filter(item => !removedCards.includes(item.idx))
+                                        .map((item) => (
+                                            <CardItem 
+                                                key={item.idx}
+                                                q={item.q}
+                                                idx={item.idx}
+                                                isHighlighted={highlightedCard === item.idx}
+                                                isAutoRandomizing={isAutoRandomizing}
+                                                isStopping={isStopping}
+                                                openCard={openCard}
+                                                setHighlightedCard={setHighlightedCard}
+                                                activeCardIndex={activeCardIndex}
+                                                cardsInteractive={cardsInteractive}
+                                                isCrowded={questions.length > 12}
+                                            />
+                                        ))
+                                    }
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'finished' && (
+                            <div className="flex-1 w-full flex flex-col items-center justify-center animate-fadeIn">
+                                <div className="relative">
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[#00c0fa]/20 rounded-full blur-3xl"></div>
+                                    <img 
+                                        src={logoUrl} 
+                                        alt="Final Logo"
+                                        className="relative z-10 w-auto h-64 md:h-96 object-contain drop-shadow-2xl"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeCardIndex !== null && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                                <div className="relative w-[95vw] max-w-7xl max-h-[95vh] bg-[#1e2542] border border-white/10 rounded-3xl p-6 md:p-12 shadow-2xl shadow-[#00c0fa]/20 flex flex-col items-center text-center animate-in zoom-in-95 duration-300 overflow-hidden">
+                                    
+                                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#00c0fa] via-blue-500 to-indigo-600 rounded-t-3xl shrink-0"></div>
+                                    
+                                    <div className="w-full flex justify-center mb-4 shrink-0"> 
+                                        <img 
+                                            src={logoUrl} 
+                                            alt="Logo"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = "https://placehold.co/100x100/0f172a/00c0fa?text=LOGO";
+                                            }}
+                                            className="h-24 md:h-40 object-contain drop-shadow-lg"
+                                        />
+                                    </div>
+
+                                    <div className="w-full flex justify-start items-start mb-6 shrink-0 relative">
+                                        <div className="text-slate-400 text-lg font-medium flex items-center gap-2">
+                                            <span className="inline-block w-2 h-8 bg-[#00c0fa] rounded-full"></span>
+                                            คำถามหมายเลขที่ {activeCardIndex + 1}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 w-full overflow-y-auto flex items-center justify-start min-h-0 pr-2">
+                                        <h3 
+                                            className="text-[27px] md:text-[39px] lg:text-[70px] font-semibold text-left text-white drop-shadow-lg break-words w-full"
+                                            style={{ lineHeight: '1.5' }}
+                                        >
+                                            {questions[activeCardIndex]}
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
