@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (Card Resize)</title>
+    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (No Mouse Interaction)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -124,28 +124,29 @@
             totalCards 
         }) => {
             
-            // Reduced font sizes for better fit on small desktop screens
             const numberSizeClass = totalCards > 6 
-                ? "text-4xl md:text-5xl" 
-                : "text-6xl md:text-7xl lg:text-9xl"; 
+                ? "text-6xl" 
+                : "text-7xl md:text-9xl lg:text-[11rem]"; 
 
             const activeStyle = isHighlighted 
                 ? "border-white bg-slate-800 scale-105 shadow-[0_0_60px_rgba(0,192,250,0.8),0_0_30px_rgba(168,85,247,0.6)] z-20 ring-4 ring-white/20"
                 : "border-white/10 hover:border-[#00c0fa]/50 hover:bg-slate-800/80 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,192,250,0.3)] hover:z-10";
 
+            // CSS Transition Class based on state
             const transitionClass = isAutoRandomizing 
                 ? (isStopping ? 'duration-500 ease-out' : 'duration-100 ease-linear')
                 : 'duration-300 ease-in-out';
 
             return (
                 <div 
+                    // NO MOUSE INTERACTION AT ALL
                     className={`
                         relative flex-1 h-full min-h-0 min-w-0
                         transition-all ${transitionClass}
                         flex flex-col items-center justify-center
                         group perspective-1000
                         p-1
-                        pointer-events-none
+                        pointer-events-none /* ปิดการรับเมาส์ทั้งหมด */
                         ${isAutoRandomizing ? '' : ''}
                     `}
                 >
@@ -162,13 +163,12 @@
                             คำถามหมายเลข
                         </div>
 
-                        {/* Reduced Circle Size */}
                         <div className={`
                             relative rounded-full aspect-square
                             flex items-center justify-center
                             transition-all duration-500
                             bg-white/5 border border-white/10
-                            ${totalCards <= 5 ? 'h-24 md:h-36 lg:h-48' : 'h-16 md:h-24'} 
+                            ${totalCards <= 5 ? 'h-32 md:h-48 lg:h-64' : 'h-24 md:h-32'} 
                             ${isHighlighted 
                                 ? 'scale-110 bg-[#00c0fa] border-white border-4 shadow-[0_0_60px_rgba(255,255,255,0.8)]' 
                                 : 'scale-100 group-hover:scale-110 group-hover:bg-[#00c0fa]/20 group-hover:border-[#00c0fa] group-hover:shadow-[0_0_50px_rgba(0,192,250,0.8)]'
@@ -252,9 +252,10 @@
                 const handleKeyInput = (e) => {
                     if (gameState !== 'playing') return;
 
+                    // Double ESC Logic
                     if (e.key === 'Escape') {
                         const now = Date.now();
-                        if (now - lastEscPressRef.current < 500) { 
+                        if (now - lastEscPressRef.current < 500) { // 500ms threshold
                             resetGame();
                             return;
                         }
@@ -344,16 +345,21 @@
                 if (randomizerRef.current) clearTimeout(randomizerRef.current);
             };
 
+            // --- NATURAL RANDOMIZER LOGIC (No Anti-Repeat) ---
             const runRandomizerStep = (currentIndex) => {
                 const nextIndex = (currentIndex + 1) % questions.length;
                 setHighlightedCard(nextIndex);
 
                 if (stoppingRef.current) {
+                    // Friction
                     speedRef.current = Math.floor(speedRef.current * 1.15); 
 
+                    // Threshold
                     if (speedRef.current > 600) { 
+                        // Stop immediately based on physics, no repeat check
                         stoppingRef.current = false;
                         
+                        // DELAY 2 Seconds to build suspense
                         setTimeout(() => { 
                             setIsAutoRandomizing(false);
                             setIsStopping(false);
@@ -441,27 +447,30 @@
             };
 
             const getQuestionStyle = (text) => {
-                const length = text.length;
-                let fontSize;
-                if (length < 20) {
-                    fontSize = 'clamp(3rem, 8vw, 6rem)'; 
-                } else if (length < 40) {
-                    fontSize = 'clamp(2.5rem, 6vw, 5rem)';
-                } else if (length < 80) {
-                    fontSize = 'clamp(2rem, 5vw, 4rem)';
-                } else {
-                    fontSize = 'clamp(1.5rem, 4vw, 3rem)';
-                }
-                
-                return {
-                    fontSize,
-                    lineHeight: '1.5',
-                    wordBreak: 'break-word',
-                    overflowWrap: 'break-word',
-                    width: '100%',
-                    padding: '0 20px' 
-                };
-            };
+    const length = text.length;
+    let fontSize;
+    
+    // ปรับลดขนาดลงเล็กน้อยเพื่อไม่ให้เบียดขอบจนสระขาด
+    if (length < 50) {
+        fontSize = 'clamp(4rem, 9vw, 7rem)'; 
+    } 
+    else if (length < 100) {
+        fontSize = 'clamp(3rem, 7vw, 5.5rem)';
+    } 
+    else {
+        fontSize = 'clamp(2.2rem, 5vw, 4rem)';
+    }
+    
+    return {
+        fontSize,
+        // เพิ่ม lineHeight เป็น 1.6 เพื่อให้วรรณยุกต์มีที่ว่าง ไม่โดนตัด
+        lineHeight: '1.6', 
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+        width: '100%',
+        padding: '20px 40px' // เพิ่ม padding ด้านบน-ล่าง (20px) ช่วยกันวรรณยุกต์ชนขอบกล่อง
+    };
+};
 
             return (
                 <div className="h-screen w-screen overflow-hidden relative flex flex-col bg-[#1e2542]">
@@ -553,7 +562,6 @@
                                         idx={i}
                                         isHighlighted={highlightedCard === i}
                                         isAutoRandomizing={isAutoRandomizing}
-                                        isStopping={isStopping}
                                         openCard={openCard}
                                         setHighlightedCard={setHighlightedCard}
                                         totalCards={questions.length}
