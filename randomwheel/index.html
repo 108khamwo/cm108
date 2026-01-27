@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เจียงใหม่ดีเบต เลือกตั้ง 69 (Persistence V34)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #0f172a; /* Deep Navy */
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        body.game-mode { cursor: none !important; }
+        body.game-mode * { cursor: none !important; }
+
+        .page-enter { opacity: 0; transform: scale(0.98) translateY(10px); }
+        .page-enter-active { opacity: 1; transform: scale(1) translateY(0); transition: opacity 0.6s ease-out, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        .flash-overlay {
+            position: fixed; inset: 0; background: white; z-index: 10000; 
+            opacity: 0; pointer-events: none;
+        }
+        .flash-overlay.flash-trigger { animation: flashEffect 0.5s ease-out forwards; }
+        @keyframes flashEffect { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+
+        .wheel-container {
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            perspective: 1000px;
+            width: 100%;
+            height: 100%;
+        }
+        .wheel-shadow {
+            filter: drop-shadow(0 30px 60px rgba(0,0,0,0.6));
+            will-change: transform;
+        }
+
+        .pointer-container {
+            transform-origin: top center;
+            transition: transform 0.1s ease-out;
+            z-index: 50;
+        }
+        
+        @keyframes winnerPulse {
+            0% { fill-opacity: 1; filter: brightness(1.2); }
+            50% { fill-opacity: 1; filter: brightness(2) drop-shadow(0 0 20px white); }
+            100% { fill-opacity: 1; filter: brightness(1.2); }
+        }
+        .winner-slice path {
+            animation: winnerPulse 0.4s ease-in-out infinite alternate;
+            z-index: 10;
+        }
+
+        /* --- Ambient Background Animations --- */
+        @keyframes float-1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(50px, -30px) scale(1.2); } }
+        @keyframes float-2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-40px, 40px) scale(0.9); } }
+        @keyframes float-3 { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(30px, 20px) rotate(15deg); } }
+        
+        .animate-bg-1 { animation: float-1 20s ease-in-out infinite; }
+        .animate-bg-2 { animation: float-2 25s ease-in-out infinite; }
+        .animate-bg-3 { animation: float-3 22s ease-in-out infinite; }
+
+        .bg-spotlight {
+            background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.15) 0%, rgba(15, 23, 42, 0) 70%);
+        }
+    </style>
+</head>
+<body> 
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const Icons = {
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            UploadCloud: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>,
+            Image: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        };
+
+        const compressImage = (file, maxWidth = 1024) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const elem = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+                        elem.width = width; elem.height = height;
+                        const ctx = elem.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(elem.toDataURL('image/png'));
+                    };
+                };
+            });
+        };
+
+        const Wheel = ({ items, spinStatus, targetIndex, onSpinFinish, setSpinStatus, currentRotationRef }) => {
+            const wheelRef = React.useRef(null);
+            const pointerRef = React.useRef(null);
+            const requestRef = React.useRef();
+            const lastAngleRef = React.useRef(0);
+            
+            // --- FIX: Initialize rotation so #1 is at Top (270deg) ---
+            const [rotation, setRotation] = React.useState(() => {
+                const sliceAngle = 360 / items.length;
+                // Pointer is at 270 (Top). Center of Slice 0 is at sliceAngle/2.
+                // We want: InitialRotation + sliceAngle/2 = 270
+                return 270 - (sliceAngle / 2);
+            });
+
+            const [speedPhase, setSpeedPhase] = React.useState('idle'); 
+            const [highlightWinner, setHighlightWinner] = React.useState(null);
+            
+            const total = items.length;
+            const degPerSlice = 360 / total;
+            const radius = 250; 
+            const center = 300; 
+            
+            const rimSize = 20; 
+            const outerRadius = radius + rimSize;
+            const pinRadius = radius + (rimSize / 2); 
+
+            // --- COLOR LOGIC: 5 Shades of Blue/Purple ---
+            const getFill = (i, total) => {
+                if (total === 5) {
+                    const palettes = [
+                        'url(#grad-modern-blue)',   // 1. Bright Cyan/Blue
+                        'url(#grad-modern-purple)', // 2. Bright Pink/Purple
+                        'url(#grad-deep-blue)',     // 3. Deep Royal Blue
+                        'url(#grad-deep-violet)',   // 4. Deep Violet
+                        'url(#grad-indigo-bridge)'  // 5. Indigo
+                    ];
+                    return palettes[i % palettes.length];
+                }
+
+                if (total % 2 !== 0 && i === total - 1) return 'url(#grad-indigo-bridge)'; 
+                return i % 2 === 0 ? 'url(#grad-modern-blue)' : 'url(#grad-modern-purple)';
+            };
+
+            const animateTicker = () => {
+                if (!wheelRef.current || !pointerRef.current) return;
+                const style = window.getComputedStyle(wheelRef.current);
+                const matrix = new DOMMatrix(style.transform);
+                let currentAngle = Math.atan2(matrix.b, matrix.a) * (180 / Math.PI);
+                if (currentAngle < 0) currentAngle += 360;
+
+                const pointerAngleInWheel = (270 - currentAngle + 360) % 360;
+                const currentSliceIndex = Math.floor(pointerAngleInWheel / degPerSlice);
+                const prevPointerAngleInWheel = (270 - lastAngleRef.current + 360) % 360;
+                const prevSliceIndex = Math.floor(prevPointerAngleInWheel / degPerSlice);
+
+                if (currentSliceIndex !== prevSliceIndex) {
+                    pointerRef.current.style.transform = 'translateX(-50%) rotate(-35deg)'; 
+                    setTimeout(() => {
+                        if (pointerRef.current) {
+                            pointerRef.current.style.transform = 'translateX(-50%) rotate(0deg)';
+                        }
+                    }, 80);
+                }
+
+                lastAngleRef.current = currentAngle;
+                requestRef.current = requestAnimationFrame(animateTicker);
+            };
+
+            React.useEffect(() => {
+                requestRef.current = requestAnimationFrame(animateTicker);
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [total]);
+
+            // --- SPIN LOGIC ---
+            React.useEffect(() => {
+                if (spinStatus === 'idle') {
+                    setSpeedPhase('idle');
+                    setHighlightWinner(null);
+                } 
+                else if (spinStatus === 'spinning') {
+                    setHighlightWinner(null);
+                    setSpeedPhase('ramp-up');
+                    setRotation(prev => prev + 720); 
+                } 
+                else if (spinStatus === 'stopping' && targetIndex !== null) {
+                    if (currentRotationRef.current !== null) {
+                        setSpeedPhase('reset');
+                        const currentVisualAngle = currentRotationRef.current;
+                        setRotation(currentVisualAngle);
+
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                setSpeedPhase('stopping');
+                                
+                                const randomFactor = (Math.random() * 0.7) - 0.35; 
+                                const jitterAngle = degPerSlice * randomFactor;
+
+                                const sliceTargetAngle = (targetIndex * degPerSlice) + (degPerSlice / 2) + jitterAngle;
+                                
+                                let targetRotationMod360 = (270 - sliceTargetAngle);
+                                targetRotationMod360 = (targetRotationMod360 + 360) % 360;
+                                
+                                const currentMod = currentVisualAngle % 360;
+                                
+                                let forwardDist = targetRotationMod360 - currentMod;
+                                if (forwardDist <= 0) forwardDist += 360;
+                                
+                                const baseSpins = 360 * 8; 
+                                
+                                const finalRot = currentVisualAngle + baseSpins + forwardDist;
+                                
+                                setRotation(finalRot);
+                            });
+                        });
+                    }
+                }
+            }, [spinStatus, targetIndex, total, degPerSlice]);
+
+            const handleTransitionEnd = () => {
+                if (speedPhase === 'ramp-up') {
+                    setSpeedPhase('constant');
+                    setRotation(prev => prev + 1080000); 
+                } else if (speedPhase === 'stopping') {
+                    setHighlightWinner(targetIndex);
+                    setTimeout(() => { onSpinFinish(); }, 800); 
+                }
+            };
+
+            const getTransition = () => {
+                if (speedPhase === 'reset') return 'none'; 
+                if (speedPhase === 'ramp-up') return 'transform 0.8s ease-in'; 
+                if (speedPhase === 'constant') return 'transform 600s linear'; 
+                if (speedPhase === 'stopping') return 'transform 7s cubic-bezier(0.25, 1, 0.5, 1)'; 
+                return 'none';
+            };
+
+            return (
+                <div className="relative w-[85vmin] h-[85vmin] wheel-container">
+                    
+                    <div 
+                        ref={wheelRef}
+                        className="w-full h-full wheel-shadow"
+                        style={{ 
+                            transform: `rotate(${rotation}deg)`,
+                            transition: getTransition()
+                        }}
+                        onTransitionEnd={handleTransitionEnd}
+                    >
+                        <svg viewBox="0 0 650 650" className="w-full h-full">
+                            <defs>
+                                <linearGradient id="grad-modern-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#06b6d4" /> <stop offset="100%" stopColor="#2563eb" />
+                                </linearGradient>
+                                <linearGradient id="grad-modern-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#d946ef" /> <stop offset="100%" stopColor="#7c3aed" />
+                                </linearGradient>
+                                <linearGradient id="grad-deep-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#60a5fa" /> <stop offset="100%" stopColor="#1e3a8a" />
+                                </linearGradient>
+                                <linearGradient id="grad-deep-violet" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#a78bfa" /> <stop offset="100%" stopColor="#4c1d95" />
+                                </linearGradient>
+                                <linearGradient id="grad-indigo-bridge" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#818cf8" /> <stop offset="100%" stopColor="#312e81" />
+                                </linearGradient>
+                                <linearGradient id="grad-rim-modern" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stopColor="#60a5fa" />
+                                    <stop offset="20%" stopColor="#3b82f6" />
+                                    <stop offset="50%" stopColor="#a855f7" /> 
+                                    <stop offset="80%" stopColor="#3b82f6" />
+                                    <stop offset="100%" stopColor="#1d4ed8" />
+                                </linearGradient>
+                                <radialGradient id="grad-hub-modern" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                                    <stop offset="0%" stopColor="#e0f2fe" /> 
+                                    <stop offset="40%" stopColor="#38bdf8" /> 
+                                    <stop offset="100%" stopColor="#0284c7" /> 
+                                </radialGradient>
+                                <radialGradient id="grad-pin-3d" cx="35%" cy="35%" r="60%" fx="35%" fy="35%">
+                                    <stop offset="0%" stopColor="#ffffff" />
+                                    <stop offset="40%" stopColor="#e2e8f0" /> 
+                                    <stop offset="100%" stopColor="#475569" /> 
+                                </radialGradient>
+                                <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feDropShadow dx="1" dy="2" stdDeviation="1.5" floodColor="#000" floodOpacity="0.5"/>
+                                </filter>
+                            </defs>
+
+                            <g transform={`translate(${center + 25}, ${center + 25})`}>
+                                <circle cx="0" cy="0" r={outerRadius} fill="url(#grad-rim-modern)" stroke="#1e3a8a" strokeWidth="2" />
+                                <circle cx="0" cy="0" r={radius + 5} fill="#0f172a" stroke="#000" strokeOpacity="0.3" strokeWidth="4" />
+
+                                {items.map((item, i) => {
+                                    const startAngle = i * degPerSlice;
+                                    const endAngle = (i + 1) * degPerSlice;
+                                    const startRad = (startAngle * Math.PI) / 180;
+                                    const endRad = (endAngle * Math.PI) / 180;
+                                    const x1 = Math.cos(startRad) * radius;
+                                    const y1 = Math.sin(startRad) * radius;
+                                    const x2 = Math.cos(endRad) * radius;
+                                    const y2 = Math.sin(endRad) * radius;
+                                    const largeArc = degPerSlice > 180 ? 1 : 0;
+                                    const pathData = `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                                    
+                                    const midAngle = startAngle + (degPerSlice / 2);
+                                    const midRad = (midAngle * Math.PI) / 180;
+                                    const textR = radius * 0.65;
+                                    const textX = Math.cos(midRad) * textR;
+                                    const textY = Math.sin(midRad) * textR;
+                                    
+                                    const isWinner = highlightWinner === i;
+
+                                    return (
+                                        <g key={`slice-${i}`} className={isWinner ? 'winner-slice' : ''}>
+                                            <path 
+                                                d={pathData} 
+                                                fill={isWinner ? '#ffffff' : getFill(i, total)}
+                                                stroke="rgba(255,255,255,0.2)"
+                                                strokeWidth="2"
+                                                fillOpacity={isWinner ? 1 : 0.85}
+                                            />
+                                            <text 
+                                                x={textX} y={textY} 
+                                                fill={isWinner ? '#0f172a' : 'white'} 
+                                                fontSize={total > 20 ? "32" : "80"} 
+                                                fontWeight="900"
+                                                fontFamily="'Prompt', sans-serif"
+                                                textAnchor="middle" 
+                                                dominantBaseline="central"
+                                                transform={`rotate(${midAngle}, ${textX}, ${textY}) rotate(90, ${textX}, ${textY})`}
+                                                style={{ 
+                                                    filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.6))',
+                                                    overflow: 'visible',
+                                                    pointerEvents: 'none'
+                                                }}
+                                            >
+                                                {i + 1}
+                                            </text>
+                                        </g>
+                                    );
+                                })}
+
+                                {items.map((item, i) => {
+                                    const endAngle = (i + 1) * degPerSlice;
+                                    const endRad = (endAngle * Math.PI) / 180;
+                                    const pinX = Math.cos(endRad) * pinRadius;
+                                    const pinY = Math.sin(endRad) * pinRadius;
+
+                                    return (
+                                        <g key={`pin-${i}`} style={{ filter: 'url(#pin-shadow)' }}>
+                                            <circle cx={pinX} cy={pinY} r="6" fill="url(#grad-pin-3d)" stroke="#334155" strokeWidth="0.5" />
+                                            <circle cx={pinX} cy={pinY} r="2.5" fill="none" stroke="#94a3b8" strokeWidth="0.5" opacity="0.5" />
+                                        </g>
+                                    );
+                                })}
+
+                                <circle cx="0" cy="0" r="50" fill="url(#grad-hub-modern)" stroke="#1e40af" strokeWidth="4" className="shadow-2xl"/>
+                                <circle cx="0" cy="0" r="35" fill="#1e293b" />
+                                <circle cx="0" cy="0" r="15" fill="#0ea5e9" />
+                            </g>
+                        </svg>
+                    </div>
+
+                    <div 
+                        ref={pointerRef}
+                        className="pointer-container absolute top-[-2%] left-1/2 -translate-x-1/2 z-50 w-[12vmin] h-[auto]"
+                    >
+                        <div className="relative filter drop-shadow-[0_0.8vmin_0.4vmin_rgba(0,0,0,0.4)]">
+                            <svg width="100%" height="100%" viewBox="0 0 100 130" fill="none">
+                                <path d="M50 120 C 50 120 20 65 20 45 A 30 30 0 1 1 80 45 C 80 65 50 120 50 120 Z" fill="#ef4444" stroke="white" strokeWidth="6" strokeLinejoin="round"/>
+                                <circle cx="50" cy="45" r="10" fill="white"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [gameState, setGameState] = React.useState('input'); 
+            const [questions, setQuestions] = React.useState([]);
+            const [inputText, setInputText] = React.useState(() => {
+                try { return localStorage.getItem('debate_questions_v5') || `นโยบายเร่งด่วน 100 วันแรก?
+แนวทางแก้ปัญหาเศรษฐกิจ?
+จุดยืนเรื่องความเท่าเทียม?
+การจัดการปัญหาฝุ่น PM 2.5?
+วิสัยทัศน์การศึกษาไทย?`; } catch(e) { return ""; }
+            });
+
+            const [activeCardIndex, setActiveCardIndex] = React.useState(null); 
+            const [spinStatus, setSpinStatus] = React.useState('idle'); 
+            const [targetIndex, setTargetIndex] = React.useState(null);
+            const [isModalClosing, setIsModalClosing] = React.useState(false);
+
+            const lastEscPressRef = React.useRef(0); 
+            const currentRotationRef = React.useRef(0); 
+            const inputBufferRef = React.useRef('');
+            const inputTimeoutRef = React.useRef(null);
+
+            const [logoUrl, setLogoUrl] = React.useState(() => {
+                try { return localStorage.getItem('debate_logo') || 'logo_debate.png'; } catch (e) { return 'logo_debate.png'; }
+            });
+            const [bgUrl, setBgUrl] = React.useState(() => {
+                try { return localStorage.getItem('debate_bg') || null; } catch (e) { return null; }
+            });
+            
+            const fileInputRef = React.useRef(null);
+            const bgInputRef = React.useRef(null);
+            const importInputRef = React.useRef(null);
+            const flashRef = React.useRef(null);
+
+            React.useEffect(() => { localStorage.setItem('debate_questions_v5', inputText); }, [inputText]);
+
+            React.useEffect(() => {
+                if (gameState === 'playing') document.body.classList.add('game-mode');
+                else document.body.classList.remove('game-mode');
+            }, [gameState]);
+
+            React.useEffect(() => {
+                const handleKeyInput = (e) => {
+                    if (gameState !== 'playing') return;
+                    if (e.key === 'Escape') {
+                        const now = Date.now();
+                        if (now - lastEscPressRef.current < 500) { resetGame(); return; }
+                        lastEscPressRef.current = now;
+                        if (activeCardIndex !== null) closeCard();
+                        return;
+                    }
+                    if (activeCardIndex !== null) {
+                        if (e.key === 'Enter' || e.code === 'Space') closeCard();
+                        return;
+                    }
+                    if (/^\d$/.test(e.key)) {
+                        if (inputTimeoutRef.current) clearTimeout(inputTimeoutRef.current);
+                        inputBufferRef.current += e.key;
+                        inputTimeoutRef.current = setTimeout(() => { inputBufferRef.current = ''; }, 2000);
+                        return; 
+                    }
+                    if (e.key === 'Enter') {
+                        if (inputBufferRef.current.length > 0) {
+                            const num = parseInt(inputBufferRef.current, 10);
+                            const index = num - 1; 
+                            inputBufferRef.current = '';
+                            if (inputTimeoutRef.current) clearTimeout(inputTimeoutRef.current);
+                            if (index >= 0 && index < questions.length) {
+                                setSpinStatus('idle'); openCard(index);
+                            }
+                            return; 
+                        }
+                    }
+                    if (e.code === 'Space' && activeCardIndex === null) {
+                        e.preventDefault(); 
+                        if (spinStatus === 'idle') startSpin();
+                        else if (spinStatus === 'spinning' || spinStatus === 'constant') stopSpin(); 
+                        return;
+                    }
+                };
+                window.addEventListener('keydown', handleKeyInput);
+                return () => window.removeEventListener('keydown', handleKeyInput);
+            }, [gameState, activeCardIndex, spinStatus, questions]); 
+
+            const handleStart = () => {
+                const qList = inputText.split('\n').map(q => q.trim()).filter(q => q.length > 0);
+                if (qList.length === 0) { alert('กรุณาใส่คำถามอย่างน้อย 1 ข้อ'); return; }
+                setQuestions(qList);
+                setGameState('playing');
+                setSpinStatus('idle');
+            };
+
+            const startSpin = () => { setSpinStatus('spinning'); setTargetIndex(null); };
+
+            const stopSpin = () => {
+                const wheelEl = document.querySelector('.wheel-shadow');
+                if (wheelEl) {
+                    const style = window.getComputedStyle(wheelEl);
+                    const matrix = new DOMMatrix(style.transform);
+                    let angle = Math.atan2(matrix.b, matrix.a) * (180 / Math.PI);
+                    if (angle < 0) angle += 360;
+                    currentRotationRef.current = angle;
+                }
+                const winner = Math.floor(Math.random() * questions.length);
+                setTargetIndex(winner);
+                setSpinStatus('stopping');
+            };
+
+            const onSpinFinish = () => { openCard(targetIndex); setTimeout(() => setSpinStatus('idle'), 1000); };
+
+            const openCard = (index) => {
+                if(flashRef.current) {
+                    flashRef.current.classList.add('flash-trigger');
+                    setTimeout(() => flashRef.current.classList.remove('flash-trigger'), 500);
+                }
+                setActiveCardIndex(index);
+            };
+
+            const closeCard = () => {
+                if (isModalClosing) return; 
+                setIsModalClosing(true);
+                setTimeout(() => { setActiveCardIndex(null); setIsModalClosing(false); }, 300);
+            };
+
+            const resetGame = () => { setGameState('input'); setSpinStatus('idle'); };
+
+            const handleLogoUpload = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const compressedBase64 = await compressImage(file, 400); 
+                        setLogoUrl(compressedBase64);
+                        localStorage.setItem('debate_logo', compressedBase64);
+                    } catch (error) { alert("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"); }
+                }
+            };
+
+            const handleBgUpload = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const compressedBase64 = await compressImage(file, 1280);
+                        setBgUrl(compressedBase64);
+                        localStorage.setItem('debate_bg', compressedBase64);
+                    } catch (error) { alert("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ"); }
+                }
+            };
+
+            const handleExport = () => {
+                const data = { questions: inputText, logo: logoUrl, bg: bgUrl };
+                const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'debate_backup.json';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            };
+
+            const handleImport = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.questions) setInputText(data.questions);
+                        if (data.logo) setLogoUrl(data.logo);
+                        if (data.bg) setBgUrl(data.bg);
+                        alert('กู้คืนข้อมูลสำเร็จ (Restore Complete)');
+                        window.location.reload(); 
+                    } catch (err) { alert('ไฟล์ไม่ถูกต้อง'); }
+                };
+                reader.readAsText(file);
+                event.target.value = '';
+            };
+
+            const getQuestionStyle = (text) => {
+                const length = text ? text.length : 0;
+                let fontSize;
+                if (length < 20) fontSize = 'clamp(5rem, 15vw, 14rem)'; 
+                else if (length < 60) fontSize = 'clamp(3rem, 10vw, 8rem)';
+                else if (length < 120) fontSize = 'clamp(2rem, 6vw, 5rem)';
+                else fontSize = 'clamp(1.8rem, 4vw, 3.5rem)';
+                return { fontSize, lineHeight: '1.3', wordBreak: 'break-word', overflowWrap: 'break-word', width: '100%', padding: '0 20px', textAlign: 'center' };
+            };
+
+            return (
+                <div className="h-screen w-screen overflow-hidden relative flex flex-col bg-[#0f172a]">
+                    <div ref={flashRef} className="flash-overlay"></div>
+                    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                        {bgUrl && <div className="absolute inset-0"><img src={bgUrl} alt="Background" className="w-full h-full object-cover blur-sm opacity-40" /></div>}
+                        <div className="absolute top-0 left-0 w-[50vw] h-[50vw] bg-[#0ea5e9]/20 blur-[150px] rounded-full mix-blend-screen animate-bg-1"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-[#a855f7]/20 blur-[150px] rounded-full mix-blend-screen animate-bg-2"></div>
+                        <div className="absolute top-[20%] right-[20%] w-[40vw] h-[40vw] bg-[#06b6d4]/10 blur-[120px] rounded-full mix-blend-screen animate-bg-3"></div>
+                        <div className="absolute inset-0 bg-spotlight"></div>
+                    </div>
+
+                    <header className={`relative z-20 flex justify-between items-center px-6 py-4 border-b border-white/10 bg-slate-900/50 backdrop-blur-md shrink-0 transition-opacity duration-300 ${activeCardIndex !== null ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                        <div className="flex items-center gap-4">
+                            <div className="cursor-pointer" onClick={() => fileInputRef.current.click()}>
+                                <img src={logoUrl} alt="Logo" onError={(e) => { e.target.src = "https://placehold.co/100x100/0f172a/00c0fa?text=LOGO"; }} className="h-16 w-auto object-contain" />
+                                <input type="file" ref={fileInputRef} onChange={handleLogoUpload} className="hidden" accept="image/*" />
+                            </div>
+                            <h1 className="text-2xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-[#0ea5e9] to-white hidden md:block py-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">คำถาม "เจียงใหม่ดีเบต เลือกตั้ง 69"</h1>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {gameState === 'input' && (
+                                <>
+                                    <button onClick={handleExport} className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded-lg transition-colors"><Icons.Download /></button>
+                                    <button onClick={() => importInputRef.current.click()} className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-400/10 rounded-lg transition-colors"><Icons.UploadCloud /> <input type="file" ref={importInputRef} onChange={handleImport} className="hidden" accept=".json" /></button>
+                                    <div className="w-px h-6 bg-white/20 mx-1"></div>
+                                    <button onClick={() => bgInputRef.current.click()} className="p-2 text-[#0ea5e9]/50 hover:text-[#0ea5e9] hover:bg-[#0ea5e9]/10 rounded-lg transition-colors"><Icons.Image /> <input type="file" ref={bgInputRef} onChange={handleBgUpload} className="hidden" accept="image/*" /></button>
+                                </>
+                            )}
+                            {gameState === 'playing' && (
+                                <button onClick={resetGame} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#0ea5e9] hover:text-white transition-colors rounded-lg hover:bg-[#0ea5e9]/10">CM108 x MCOT x สวท.เชียงใหม่</button>
+                            )}
+                        </div>
+                    </header>
+
+                    <main className="relative z-10 flex-1 min-h-0 w-full p-4 md:p-8 lg:p-12 flex flex-col justify-center items-center">
+                        {gameState === 'input' && (
+                            <div className="w-full max-w-4xl flex flex-col justify-center page-enter page-enter-active">
+                                <div className="bg-slate-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/10 flex flex-col h-[70vh]">
+                                    <h2 className="text-2xl font-bold mb-4 text-[#0ea5e9]">รายการคำถาม</h2>
+                                    <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} className="flex-1 w-full bg-slate-900/50 rounded-xl p-4 text-lg text-white border border-white/10 focus:border-[#0ea5e9] focus:ring-1 focus:ring-[#0ea5e9] focus:outline-none resize-none mb-6 leading-relaxed" placeholder="พิมพ์คำถามที่นี่..."></textarea>
+                                    <button onClick={handleStart} className="w-full py-4 bg-gradient-to-r from-[#0ea5e9] to-blue-600 rounded-xl text-xl font-bold text-white shadow-lg hover:shadow-[#0ea5e9]/40 hover:scale-[1.01] transition-all active:scale-95">เริ่มระบบสุ่ม (Start Wheel)</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'playing' && (
+                            <>
+                                <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ${activeCardIndex !== null ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
+                                    <Wheel 
+                                        items={questions} 
+                                        spinStatus={spinStatus}
+                                        setSpinStatus={setSpinStatus}
+                                        targetIndex={targetIndex}
+                                        onSpinFinish={onSpinFinish}
+                                        currentRotationRef={currentRotationRef}
+                                    />
+                                </div>
+
+                                {activeCardIndex !== null && (
+                                    <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-300 ${isModalClosing ? 'opacity-0' : 'opacity-100 animate-in fade-in duration-300'}`} onClick={closeCard}>
+                                        <div className={`absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity duration-300 ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}></div>
+                                        <div className={`relative w-[98vw] max-w-7xl max-h-[90vh] bg-[#1e2542] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl shadow-[#0ea5e9]/20 flex flex-col overflow-hidden transition-all duration-300 ${isModalClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100 animate-in zoom-in-95 duration-300'}`} onClick={(e) => e.stopPropagation()}>
+                                            <div className="w-full flex justify-between items-center shrink-0 mb-8">
+                                                <div className="flex flex-col items-start gap-4">
+                                                    <div className="text-white text-2xl md:text-4xl font-medium flex items-center gap-3">
+                                                        <span className="inline-block w-1.5 h-8 md:w-2 md:h-10 bg-[#0ea5e9] rounded-full shadow-[0_0_10px_#0ea5e9]"></span>
+                                                        คำถามหมายเลข
+                                                    </div>
+                                                    <div className="relative mt-2 ml-4">
+                                                        <div className="w-16 h-16 md:w-24 md:h-24 bg-[#0ea5e9] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(14,165,233,0.6)] border-[3px] border-white">
+                                                            <span className="text-4xl md:text-5xl font-bold text-white drop-shadow-md">{activeCardIndex + 1}</span>
+                                                        </div>
+                                                        <div className="absolute inset-0 rounded-full border-2 border-[#0ea5e9]/50 animate-ping"></div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-end"><img src={logoUrl} alt="Logo" className="h-16 md:h-24 object-contain opacity-100 drop-shadow-xl" /></div>
+                                            </div>
+                                            <div className="flex-1 w-full flex items-center justify-center overflow-hidden px-4">
+                                                <h3 className="font-bold text-center text-white drop-shadow-2xl w-full" style={getQuestionStyle(questions[activeCardIndex])}>{questions[activeCardIndex]}</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
