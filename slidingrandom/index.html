@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบสุ่มผู้สมัคร - เจียงใหม่ดีเบต เลือกตั้ง 69 (Final Adjusted)</title>
+    <title>ระบบสุ่มผู้สมัคร - เจียงใหม่ดีเบต เลือกตั้ง 69 (V5: Smooth Lock)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -67,6 +67,7 @@
             -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
         }
 
+        /* Force GPU Acceleration to prevent stutter */
         .hardware-accelerated {
             will-change: transform;
             transform: translate3d(0, 0, 0);
@@ -161,7 +162,8 @@
 
         const CARD_WIDTH = 300; 
 
-        const CandidateCard = React.memo(({ c, index }) => {
+        // Memoized Card Component
+        const CandidateCard = React.memo(({ c }) => {
             const { firstName, lastName } = formatCandidateName(c.name);
             return (
                 <div className="shrink-0 flex flex-col items-center justify-center p-4 transition-opacity duration-300" style={{ width: `${CARD_WIDTH}px` }}>
@@ -209,9 +211,7 @@
             const speedRef = React.useRef(0);
             const animationRef = React.useRef(null);
             const stateRef = React.useRef('idle'); 
-            
-            // --- ADJUSTMENT 1: Slower Stop (Increased Friction) ---
-            const frictionRef = React.useRef(0.985); // ปรับจาก 0.980 เป็น 0.985 ให้ไถลนานขึ้น
+            const frictionRef = React.useRef(0.985);
 
             const [logoUrl, setLogoUrl] = React.useState(null);
             const [bgUrl, setBgUrl] = React.useState(null);
@@ -330,7 +330,9 @@
                 reader.readAsText(file);
             };
 
-            const CLONE_MULTIPLIER = 16;
+            // --- V5 FIX: Large Buffer & Strict Phase Control ---
+            // สร้าง Buffer ให้เยอะพอที่จะไถลไปได้ไกลโดยไม่ต้อง Reset
+            const CLONE_MULTIPLIER = 40; 
             
             const buildDisplayPool = (list) => {
                 if (list.length === 0) return [];
@@ -344,8 +346,10 @@
                 const pool = buildDisplayPool(candidates);
                 setDisplayPool(pool);
                 setHistory([]);
-                const centerSetIndex = Math.floor(CLONE_MULTIPLIER / 2);
-                positionRef.current = centerSetIndex * candidates.length * CARD_WIDTH;
+                
+                // Start in the middle of the huge buffer
+                positionRef.current = candidates.length * CARD_WIDTH * 15;
+                
                 stateRef.current = 'idle';
                 setWinner(null);
                 setView('ready');
@@ -356,16 +360,16 @@
                 
                 positionRef.current += speedRef.current;
                 
-                const poolLength = displayPool.length;
-                if (poolLength === 0) return;
-                
-                const setWidth = (poolLength / CLONE_MULTIPLIER) * CARD_WIDTH; 
-
-                if (positionRef.current >= setWidth * (CLONE_MULTIPLIER - 4)) {
-                    positionRef.current -= setWidth * (CLONE_MULTIPLIER - 8); 
-                }
-                if (positionRef.current <= setWidth * 2) {
-                    positionRef.current += setWidth * (CLONE_MULTIPLIER - 8);
+                // --- V5 FIX: Conditional Reset ---
+                // Reset ตำแหน่งเฉพาะตอนหมุนเร็ว (Spinning) เท่านั้น
+                // ห้าม Reset ตอนหยุด (Stopping/Snapping) เด็ดขาด เพื่อป้องกันภาพกระโดด
+                if (stateRef.current === 'spinning') {
+                     const oneSetWidth = candidates.length * CARD_WIDTH;
+                     // ถ้าวิ่งไปไกลเกิน (เช่นเกินชุดที่ 25) ให้ตบกลับมาที่ชุดที่ 15
+                     // การตบกลับนี้เนียนตาเพราะภาพชุดที่ 25 กับ 15 เหมือนกันเป๊ะ
+                     if (positionRef.current > oneSetWidth * 25) {
+                         positionRef.current -= oneSetWidth * 10;
+                     }
                 }
 
                 const centerOffset = window.innerWidth / 2 - (CARD_WIDTH / 2);
@@ -384,8 +388,9 @@
                     const currentIndex = Math.round(positionRef.current / CARD_WIDTH);
                     let targetIndex = currentIndex;
                     let foundValid = false;
-
-                    const searchRange = Math.min(20, displayPool.length / 2);
+                    
+                    // Search forward/backward limited range
+                    const searchRange = Math.min(30, displayPool.length);
 
                     for (let offset = 0; offset < searchRange; offset++) {
                         const checkIndices = [currentIndex + offset, currentIndex - offset];
@@ -416,8 +421,8 @@
                         if (winnerToSet) {
                             stateRef.current = 'decided';
                             setWinner(winnerToSet);
-                            // --- ADJUSTMENT 2: Faster Reveal ---
-                            setTimeout(() => setView('winner'), 50); // ปรับจาก 400ms เหลือ 50ms ให้โชว์ทันที
+                            // Instant Reveal (50ms)
+                            setTimeout(() => setView('winner'), 50); 
                         } else {
                              setView('finished');
                         }
@@ -451,7 +456,6 @@
             const stopSpin = () => { 
                 if (stateRef.current !== 'spinning') return;
                 stateRef.current = 'stopping'; 
-                // --- ADJUSTMENT 1: Reset Friction ---
                 frictionRef.current = 0.985; 
             };
 
@@ -466,15 +470,12 @@
                         if (nextRemaining.length === 0) {
                             setView('finished');
                         } else {
+                            // Re-calculate Pool for next round
                             const newPool = buildDisplayPool(nextRemaining);
-                            const currentIndex = Math.round(positionRef.current / CARD_WIDTH);
-                            const listSizeBefore = remainingCandidates.length;
-                            const listSizeAfter = nextRemaining.length;
-                            if (listSizeAfter > 0) {
-                                const cycleIndex = currentIndex % listSizeBefore;
-                                const newBaseIndex = Math.floor(currentIndex / listSizeBefore) * listSizeAfter;
-                                positionRef.current = (newBaseIndex + (cycleIndex % listSizeAfter)) * CARD_WIDTH;
-                            }
+                            
+                            // Reset Position to safe middle zone
+                            positionRef.current = nextRemaining.length * CARD_WIDTH * 15;
+                            
                             setDisplayPool(newPool);
                             setWinner(null);
                             stateRef.current = 'idle';
