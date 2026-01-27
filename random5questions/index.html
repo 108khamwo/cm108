@@ -132,21 +132,19 @@
                 ? "border-white bg-slate-800 scale-105 shadow-[0_0_60px_rgba(0,192,250,0.8),0_0_30px_rgba(168,85,247,0.6)] z-20 ring-4 ring-white/20"
                 : "border-white/10 hover:border-[#00c0fa]/50 hover:bg-slate-800/80 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,192,250,0.3)] hover:z-10";
 
-            // CSS Transition Class based on state
             const transitionClass = isAutoRandomizing 
                 ? (isStopping ? 'duration-500 ease-out' : 'duration-100 ease-linear')
                 : 'duration-300 ease-in-out';
 
             return (
                 <div 
-                    // NO MOUSE INTERACTION AT ALL
                     className={`
                         relative flex-1 h-full min-h-0 min-w-0
                         transition-all ${transitionClass}
                         flex flex-col items-center justify-center
                         group perspective-1000
                         p-1
-                        pointer-events-none /* ปิดการรับเมาส์ทั้งหมด */
+                        pointer-events-none 
                         ${isAutoRandomizing ? '' : ''}
                     `}
                 >
@@ -252,10 +250,9 @@
                 const handleKeyInput = (e) => {
                     if (gameState !== 'playing') return;
 
-                    // Double ESC Logic
                     if (e.key === 'Escape') {
                         const now = Date.now();
-                        if (now - lastEscPressRef.current < 500) { // 500ms threshold
+                        if (now - lastEscPressRef.current < 500) { 
                             resetGame();
                             return;
                         }
@@ -345,21 +342,16 @@
                 if (randomizerRef.current) clearTimeout(randomizerRef.current);
             };
 
-            // --- NATURAL RANDOMIZER LOGIC (No Anti-Repeat) ---
             const runRandomizerStep = (currentIndex) => {
                 const nextIndex = (currentIndex + 1) % questions.length;
                 setHighlightedCard(nextIndex);
 
                 if (stoppingRef.current) {
-                    // Friction
                     speedRef.current = Math.floor(speedRef.current * 1.15); 
 
-                    // Threshold
                     if (speedRef.current > 600) { 
-                        // Stop immediately based on physics, no repeat check
                         stoppingRef.current = false;
                         
-                        // DELAY 2 Seconds to build suspense
                         setTimeout(() => { 
                             setIsAutoRandomizing(false);
                             setIsStopping(false);
@@ -446,31 +438,30 @@
                 event.target.value = '';
             };
 
+            // FIX: ปรับสมดุลขนาดฟอนต์และช่องว่างวรรณยุกต์
             const getQuestionStyle = (text) => {
-    const length = text.length;
-    let fontSize;
-    
-    // ปรับลดขนาดลงเล็กน้อยเพื่อไม่ให้เบียดขอบจนสระขาด
-    if (length < 50) {
-        fontSize = 'clamp(4rem, 9vw, 7rem)'; 
-    } 
-    else if (length < 100) {
-        fontSize = 'clamp(3rem, 7vw, 5.5rem)';
-    } 
-    else {
-        fontSize = 'clamp(2.2rem, 5vw, 4rem)';
-    }
-    
-    return {
-        fontSize,
-        // เพิ่ม lineHeight เป็น 1.6 เพื่อให้วรรณยุกต์มีที่ว่าง ไม่โดนตัด
-        lineHeight: '1.6', 
-        wordBreak: 'break-word',
-        overflowWrap: 'break-word',
-        width: '100%',
-        padding: '20px 40px' // เพิ่ม padding ด้านบน-ล่าง (20px) ช่วยกันวรรณยุกต์ชนขอบกล่อง
-    };
-};
+                const length = text.length;
+                let fontSize;
+                
+                // ลดขนาดสูงสุดลงเล็กน้อยเพื่อความปลอดภัย (จาก 7-8rem เหลือ 6rem)
+                if (length < 50) {
+                    fontSize = 'clamp(3rem, 7vw, 6rem)'; 
+                } else if (length < 100) {
+                    fontSize = 'clamp(2.5rem, 6vw, 4.5rem)';
+                } else {
+                    fontSize = 'clamp(1.8rem, 4vw, 3.2rem)';
+                }
+                
+                return {
+                    fontSize,
+                    // สำคัญ: lineHeight 1.8 เพื่อกันวรรณยุกต์ขาด
+                    lineHeight: '1.8', 
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    width: '100%',
+                    padding: '0 30px' 
+                };
+            };
 
             return (
                 <div className="h-screen w-screen overflow-hidden relative flex flex-col bg-[#1e2542]">
@@ -485,7 +476,6 @@
                         <div className="absolute bottom-0 right-0 w-[50vw] h-[50vw] bg-[#a855f7]/20 blur-[120px] rounded-full mix-blend-screen"></div>
                     </div>
 
-                    {/* Header */}
                     <header className={`relative z-20 flex justify-between items-center px-6 py-4 border-b border-white/10 bg-slate-900/50 backdrop-blur-md shrink-0 transition-opacity duration-300 ${activeCardIndex !== null ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                         <div className="flex items-center gap-4">
                             <div className="cursor-pointer" onClick={() => fileInputRef.current.click()}>
@@ -570,39 +560,31 @@
                             </div>
                         )}
 
-                        {/* --- MODAL DISPLAY (V.30 Final Tweaks - Text Larger & White) --- */}
                         {gameState === 'playing' && activeCardIndex !== null && (
                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200" onClick={closeCard}>
-                                {/* The Frame */}
+                                {/* FIX: ลบ overflow-hidden และเพิ่มพื้นที่ว่างแนวตั้ง py-10 */}
                                 <div 
-                                    className="relative w-[95vw] max-w-7xl max-h-[90vh] bg-[#1e2542] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl shadow-[#00c0fa]/20 flex flex-col overflow-hidden" 
+                                    className="relative w-[95vw] max-w-7xl max-h-[90vh] bg-[#1e2542] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl shadow-[#00c0fa]/20 flex flex-col py-10" 
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     
-                                    {/* Header Section: Smaller Elements */}
                                     <div className="w-full flex justify-between items-center shrink-0 mb-8">
-                                        
-                                        {/* Left Side: Number with Circle (Smaller) */}
                                         <div className="flex flex-col items-start gap-4">
-                                            {/* Label "คำถามหมายเลข" - Text White & Larger */}
                                             <div className="text-white text-2xl md:text-4xl font-medium flex items-center gap-3">
                                                 <span className="inline-block w-1.5 h-8 md:w-2 md:h-10 bg-[#00c0fa] rounded-full shadow-[0_0_10px_#00c0fa]"></span>
                                                 คำถามหมายเลข
                                             </div>
                                             
-                                            {/* Number Circle - Smaller */}
                                             <div className="relative mt-2 ml-4">
                                                 <div className="w-16 h-16 md:w-24 md:h-24 bg-[#00c0fa] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,192,250,0.6)] border-[3px] border-white">
                                                     <span className="text-4xl md:text-5xl font-bold text-white drop-shadow-md">
                                                         {activeCardIndex + 1}
                                                     </span>
                                                 </div>
-                                                {/* Decorative Pulse Ring */}
                                                 <div className="absolute inset-0 rounded-full border-2 border-[#00c0fa]/50 animate-ping"></div>
                                             </div>
                                         </div>
 
-                                        {/* Right Side: Logo (Slightly Smaller) */}
                                         <div className="flex flex-col items-end">
                                             <img 
                                                 src={logoUrl} 
@@ -612,8 +594,7 @@
                                         </div>
                                     </div>
 
-                                    {/* Question Text - Balanced Size */}
-                                    <div className="flex-1 w-full flex items-center justify-center overflow-hidden px-4">
+                                    <div className="flex-1 w-full flex items-center justify-center px-4">
                                         <h3 
                                             className="font-bold text-center text-white drop-shadow-2xl w-full"
                                             style={getQuestionStyle(questions[activeCardIndex])}
@@ -625,7 +606,6 @@
                                 </div>
                             </div>
                         )}
-                        {/* --- END MODAL --- */}
 
                     </main>
                 </div>
