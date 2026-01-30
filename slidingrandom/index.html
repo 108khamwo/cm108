@@ -240,27 +240,16 @@
             const bgInputRef = React.useRef(null);
             const backupInputRef = React.useRef(null);
             
-            // Auto Hide Cursor
-            const cursorTimeout = React.useRef(null);
+            // --- Logic ควบคุมเมาส์ (ปรับปรุงใหม่ตามคำขอ) ---
             React.useEffect(() => {
-                const handleActivity = () => {
+                if (view === 'input') {
+                    // หน้าป้อนข้อมูล: โชว์เมาส์ปกติ
                     document.body.style.cursor = 'auto';
-                    if (cursorTimeout.current) clearTimeout(cursorTimeout.current);
-                    cursorTimeout.current = setTimeout(() => {
-                        document.body.style.cursor = 'none';
-                    }, 3000);
-                };
-                window.addEventListener('mousemove', handleActivity);
-                window.addEventListener('keydown', handleActivity);
-                window.addEventListener('click', handleActivity);
-                handleActivity();
-                return () => {
-                    window.removeEventListener('mousemove', handleActivity);
-                    window.removeEventListener('keydown', handleActivity);
-                    window.removeEventListener('click', handleActivity);
-                    if (cursorTimeout.current) clearTimeout(cursorTimeout.current);
-                };
-            }, []);
+                } else {
+                    // หน้าอื่นๆ (สุ่ม/ประกาศผล): ซ่อนเมาส์
+                    document.body.style.cursor = 'none';
+                }
+            }, [view]);
 
             // Initial Load
             React.useEffect(() => {
